@@ -1,0 +1,10 @@
+# File names are either absolute or relative to the parent folder of the
+# vhdl_ls.toml file and supports glob-style patterns.
+# This file is for code checking support for VHDL LS
+[libraries]
+matrix.files = [
+  'tb/matrix/*.vhd',
+]
+matrix_fpga.files = [
+  'src/*.vhd',
+]
