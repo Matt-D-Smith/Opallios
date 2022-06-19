@@ -19,4 +19,5 @@ This project is to make a decorative RGB LED display. This will use a HUB75 inte
 - Swivelable wall mount
 - Global dimming
 
+---
 For a detailed description, see the [design description document](/Documentation/Description_Document.md).

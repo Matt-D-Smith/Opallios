@@ -34,16 +34,12 @@ This project is to make a decorative RGB LED display. This will use a HUB75 inte
 [Binary Coded Modulation](http://www.batsocks.co.uk/readme/art_bcm_1.htm)
 
 # Detailed Description
----
 ## Panel Details
----
 3mm LED pitch, 192mmx192mm total size, 64x64 RGB LEDs.
 
 1/32 scan on a 64x64 grid array *probably* means that 2 rows of 64 are lit up at a time, indicates 2x 5-bit decoders for row decoding.
 
----
 ## Power consumption:  
----
 From adafruit's 64x32 3mm pitch RGB panel * 2:  
 22W maximum on 5v supply * 2 = 8.8 A max
 
@@ -56,9 +52,7 @@ max estimate 8.8 + 0.5 + 0.1 = 9.4 A
 
 I will rate power supply for project at 5V 10 A.
 
----
 ## Part selection
----
 I'm not looking to make any custom boards for this project, so this will use commercially available boards.
 Options of connecting a FPGA to a respbeerry pi seem limited.
 
@@ -68,22 +62,18 @@ The beaglebone has a TI GPMC interface, allowing for a 16 bit data interface at 
 
 For these reasons I will be using a BeagleBone Black as the host device and graphics generator and the BeagleWire cape as the driving FPGA.
 
----
 ## Bit budget
----
 The iCE40HX4k FPGA on the beaglewire board has 80k (81920 bit) block RAM. This shall be used for the frame buffer to store the data to display on the LED array. To achieve 18 bit color, the full array will use 64 * 64 * 18 = 73728 (72k) bits for a frame buffer. If a background buffer is desired, the external 32Mb SDRAM can be used.
 
----
 ## Data Rates
----
-### **HUB75 Clock Rate**
+### HUB75 Clock Rate
 [Someone on adafruit forums drove a 16x32 matrix at 50MHz](https://forums.adafruit.com/viewtopic.php?f=47&t=26130&start=0)
 
 FM6126 and ICN2037 (if those are a correct part) lists 30MHz as maximum clock rate
 
 From 100MHz clock, will target 25MHz (divide by 4). Can go higher, but for anything other than 50MHz, will need to consider clock domain crossings and PLLs. I expect there will be a 100MHz -> 100MHz CDC at the GPMC interface, if a rate other than 25mhz is desired there may be additional CDCs between the 100MHz fpga logic and the HUB75 interface.
 
-### **LED Matrix Frame Rate**
+### LED Matrix Frame Rate
 At 25MHz, clock period is 20ns.  
 The LED matrix functions as 2 separate halves, having 2 channels of rgb input data, and 2 rows of LEDs get illuminated at a time. Therefore for time calculations we can treat it as a 64x32 module.
 
@@ -115,7 +105,7 @@ A = 609640/63 = 9676.8254 ns (gross)
 
 To deal with these nasty refresh rate periods, there will be a frame rate timer which will sync the transitions to the next frame.
 
-### **GPMC frame transfer time**
+### GPMC frame transfer time
 GPMC runs at 100MHz, so 10 ns clock period. GPMC has a 16-bit data bus, so assume one 16-bit register gets loaded in 1 clock cycle, and we are doing a continuous block write, so there should only be one start block of overhead.
 
 64 * 64 * 18 bits/LED = 73728 bits  
