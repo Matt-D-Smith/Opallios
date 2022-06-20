@@ -1,0 +1,4 @@
+Opallios_FPGA/Opallios_FPGA_Implmnt/
+Opallios_FPGA/*.log
+Opallios_FPGA/*.bak
+Opallios_FPGA/synlog.tcl

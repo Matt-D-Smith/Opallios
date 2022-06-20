@@ -108,10 +108,22 @@ To deal with these nasty refresh rate periods, there will be a frame rate timer 
 ### GPMC frame transfer time
 GPMC runs at 100MHz, so 10 ns clock period. GPMC has a 16-bit data bus, so assume one 16-bit register gets loaded in 1 clock cycle, and we are doing a continuous block write, so there should only be one start block of overhead.
 
+If tight packing is used, the 18 bytes of data are transferred in repeating blocks of 9 16-bit register writes, containing 8 sets of 18-bit LED RGB data. With this method, the full 73728 bit array data is sent in 512 blocks of 16 * 9 = 144 bits.  
+
 64 * 64 * 18 bits/LED = 73728 bits  
 73728/16 = 4608 clocks = 46080 ns  
 
-The total minimum frame time is 5652480 ns, divide by 32 to get one row = 176640 ns. Our frame transfer time is then significantly less than the time to draw one row, so we should be able to load our full frame within one row. However, because we have to continuously draw to maintain color information, we don't want to write data until we immediately want to change it. By synchronizing this timing information, we could have a data transfer model like this :
+![Tight packed RGB data](./include/tight-packed-GPMC-data.png)
+
+With loose packing, the 18 bit RGB data will be broken into register pairs, one containing R and G data, and the other containing B data. this transfers the 18 bits in 2 16 bit register writes, so the transfer time would be.  
+
+64 * 64 LEDS * 2 clocks per LED = 8192 clocks = 81920 ns
+
+![Loose packed RGB data](./include/loose-packed-GPMC-data.png)
+
+The total minimum frame time is 5652480 ns, divide by 32 to get one row = 176640 ns. Our frame transfer time is then significantly less than the time to draw one row, so we should be able to load our full frame within one row. Because we have plenty of time to transfer the data, I will use loose packing, as it simplifies the design.
+
+ Because we have to continuously draw to maintain color information, we don't want to write data until we immediately want to change it. By synchronizing this timing information, we could have a data transfer model like this :
 
 - keep a frame switch timer, to indicate when to change frames.
 - Once this timer goes high, continue drawing the current frame until row 31 and 63 are being drawn

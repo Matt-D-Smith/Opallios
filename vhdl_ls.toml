@@ -6,5 +6,5 @@ matrix.files = [
   'tb/matrix/*.vhd',
 ]
 matrix_fpga.files = [
-  'src/*.vhd',
+  'src/hdl/*.vhd',
 ]
