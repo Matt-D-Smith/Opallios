@@ -140,6 +140,8 @@ when GPMC write to any in range of LED frame data, grab both data and address, a
 
 figure out how to do block writes on GPMC
 
+make IO block and constraints
+may need async_reg or false path from GPMC clock domain to 100M clock domain
 
 
 ## Parts List
@@ -149,6 +151,6 @@ figure out how to do block writes on GPMC
 | [5V 10A Wall power supply](https://www.aliexpress.com/item/3256802546767846.html) | 1 | 2 |
 | [5.5x2.5mm DC barrel jack to screw terminal adapter](https://www.aliexpress.com/item/2251832639416404.html) | 1 | 2 |
 | [Screw terminal to matrix power cable (incl. w/ matrix)](https://www.aliexpress.com/item/2251832744994700.html) | 1 | 2 |
-| [Beaglebone Black](https://www.crowdsupply.com/crowd-supply/special-items) | 1 | 1 |
-| [BeagleWire](https://www.crowdsupply.com/crowd-supply/special-items) | 1 | 1 |
+| [Beaglebone Black](https://www.crowdsupply.com/crowd-supply/special-items) | 1 | 2 |
+| [BeagleWire](https://www.crowdsupply.com/crowd-supply/special-items) | 1 | 2 |
 | [5.5x2.5 barrel jack 2-way cable splitter](https://www.ebay.com/itm/252893935632) | 1 | 2 |

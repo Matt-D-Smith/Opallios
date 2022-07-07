@@ -33,7 +33,7 @@ ProjectName=Opallios_FPGA
 Vendor=SiliconBlue
 Synthesis=synplify
 ProjectVFiles=../src/hdl/matrix_interface.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work
-ProjectCFiles=
+ProjectCFiles=../src/constraints/opallios_timing.sdc
 CurImplementation=Opallios_FPGA_Implmnt
 Implementations=Opallios_FPGA_Implmnt
 StartFromSynthesis=yes

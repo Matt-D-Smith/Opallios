@@ -2,13 +2,9 @@
 -- Project      : Opallios
 --------------------------------------------------------------------------------
 -- File         : led_matrix_fpga_top.vhd
--- Generated    : 06/19/2022
+-- Generated    : 07/06/2022
 --------------------------------------------------------------------------------
 -- Description  : Top level Beaglewire FPGA interface for driving 64x64 LED matrix
---------------------------------------------------------------------------------
--- Revision History :
---   Date        Author        Changes
---   06/19/2022  Matt D Smith  Initial Design
 --------------------------------------------------------------------------------
 library ieee;
     use ieee.std_logic_1164.all;
@@ -69,9 +65,9 @@ architecture rtl of led_matrix_fpga_top is
 
     component matrix_interface is
         port (
-            CLK             : in std_logic;
-            Frame_Addr      : in std_logic_vector(11 downto 0); -- log2(64*64)
-            Frame_data      : in std_logic_vector(17 downto 0); -- 18 bit color
+            CLK             : in  std_logic;
+            LED_Addr        : out std_logic_vector(11 downto 0); -- log2(64*64)
+            LED_Data_RGB    : in  std_logic_vector(17 downto 0); -- 18 bit color
             R0              : out std_logic;
             G0              : out std_logic;
             B0              : out std_logic;
@@ -101,29 +97,39 @@ architecture rtl of led_matrix_fpga_top is
         );
     end component;
 
-    -- GPMC interface signals
-    constant ADDR_WIDTH : integer := 4;
-    constant DATA_WIDTH : integer := 16;
-    constant RAM_DEPTH  : integer := 2**ADDR_WIDTH;
+    -- S_ for start range, E_ for end range, R_ for register
+    constant S_MATRIX_ADDR : std_logic_vector := x"2000"; -- map 4096x18 to 8192x16
+    constant E_MATRIX_ADDR : std_logic_vector := x"3FFF";
 
+    -- GPMC constants
+    constant GPMC_ADDR_WIDTH    : integer := 16;
+    constant GPMC_DATA_WIDTH    : integer := 16;
+    constant RAM_DEPTH          : integer := 2**GPMC_ADDR_WIDTH;
     -- GPMC signals
-    signal oen          : std_logic;
-    signal wen          : std_logic;
-    signal csn          : std_logic;
-    signal gpmc_addr    : std_logic_vector(ADDR_WIDTH-1 downto 0);
-    signal data_out     : std_logic_vector(DATA_WIDTH-1 downto 0);
-    signal data_in      : std_logic_vector(DATA_WIDTH-1 downto 0);
-    -- DP ram signals
-    signal oe           : std_logic;
-    signal we           : std_logic;
-    signal read_addr    : std_logic_vector(ADDR_WIDTH-1 downto 0);
-    signal raddr        : std_logic_vector(ADDR_WIDTH-1 downto 0);
+    signal oen              : std_logic;
+    signal wen              : std_logic;
+    signal csn              : std_logic;
+    signal gpmc_addr        : std_logic_vector(GPMC_ADDR_WIDTH-1 downto 0);
+    signal data_wr          : std_logic_vector(GPMC_DATA_WIDTH-1 downto 0);
+    signal data_rd          : std_logic_vector(GPMC_DATA_WIDTH-1 downto 0);
+    
+    -- reg ram signals
+    signal oe               : std_logic;
+    signal we               : std_logic;
+    signal we_regs          : std_logic;
+    signal read_addr        : std_logic_vector(GPMC_ADDR_WIDTH-1 downto 0);
+    signal raddr            : std_logic_vector(GPMC_ADDR_WIDTH-1 downto 0);
+    -- matrix LED ram signals
+    signal we_matrix        : std_logic;
+    signal we_matrix_buf    : std_logic;
+    signal LED_Wr_Addr      : std_logic_vector(11 downto 0); -- log2(64*64) bits
+    signal LED_Rd_Addr      : std_logic_vector(11 downto 0); -- log2(64*64) bits
+    signal LED_Data_RG_D    : std_logic_vector(11 downto 0);
+    signal LED_Data_RG_Q    : std_logic_vector(11 downto 0);
+    signal LED_Data_RGB     : std_logic_vector(17 downto 0);
 
     -- Register map
     signal frame_status : std_logic_vector(15 downto 0); -- TBD contents
-    signal LED_address  : std_logic_vector(11 downto 0); -- log2(64*64) bits
-    signal LED_Data_RG  : std_logic_vector(11 downto 0);
-    signal LED_Data_B   : std_logic_vector(5 downto 0);
 
     -- matrix interface
     -- this may need to change, frame sync signals and memory interface 
@@ -132,30 +138,10 @@ architecture rtl of led_matrix_fpga_top is
 
 begin
 
-    oe <= (not csn) and wen and (not oen); -- this may need to add a when for FPGA side writes
-    we <= (not csn) and (not wen) and oen; -- this may need to add a when for FPGA side writes
-    read_addr <= (others => '0'); -- zero for now, FPGA side reads later 
-    raddr <= gpmc_addr when oe = '1' else read_addr;
-
-    u_mem : dual_port_ram
-    generic map (
-        addr_width => 4, --16x16
-        data_width => 16
-    )
-    port map (
-        write_en    => we,
-        waddr       => gpmc_addr,
-        wclk        => clk_100M,
-        raddr       => raddr,
-        rclk        => clk_100M,
-        din         => data_out,
-        dout        => data_in
-    );
-
     u_gpmc_sync: gpmc_sync
     generic map (
-        DATA_WIDTH => DATA_WIDTH,
-        ADDR_WIDTH => ADDR_WIDTH
+        DATA_WIDTH => GPMC_DATA_WIDTH,
+        ADDR_WIDTH => GPMC_ADDR_WIDTH
     )
     port map (
         clk         => clk_100M,
@@ -171,15 +157,64 @@ begin
         we          => wen,
         cs          => csn,
         address     => gpmc_addr,
-        data_out    => data_out,
-        data_in     => data_in
+        data_out    => data_wr,
+        data_in     => data_rd
+    );
+
+    oe <= (not csn) and wen and (not oen); -- this may need to add a when for FPGA side writes
+    we <= (not csn) and (not wen) and oen; -- this may need to add a when for FPGA side writes
+    read_addr <= (others => '0'); -- zero for now, FPGA side reads later 
+    raddr <= gpmc_addr when oe = '1' else read_addr;
+
+    u_regs : dual_port_ram
+    generic map (
+        addr_width => 4, --16x16
+        data_width => 16
+    )
+    port map (
+        write_en    => we_regs,
+        waddr       => gpmc_addr(3 downto 0),
+        wclk        => clk_100M,
+        raddr       => raddr(3 downto 0),
+        rclk        => clk_100M,
+        din         => data_wr,
+        dout        => data_rd
+    );
+
+    LED_Wr_Addr <= gpmc_addr(12 downto 1); -- divide by 2 to map 8192 to 4096
+    we_matrix_buf <= we when (gpmc_addr >= S_MATRIX_ADDR) and (gpmc_addr <= E_MATRIX_ADDR) else '0';
+    we_matrix <= we_matrix_buf when (gpmc_addr(0) = '1') else '0'; -- only enable we when writing to the blue data reg
+
+    p_RG_reg: process (clk_100M)
+    begin
+        if rising_edge(clk_100M) then
+            LED_Data_RG_Q <= LED_Data_RG_D;
+            if ((we_matrix_buf = '1') and (gpmc_addr(0) = '0')) then
+                LED_Data_RG_D <= data_wr(11 downto 0);
+            end if;
+        end if;
+    end process;
+
+    u_matrix_ram : dual_port_ram
+    generic map (
+        addr_width => 12, --4096x18
+        data_width => 18
+    )
+    port map (
+        write_en    => we_matrix,
+        waddr       => LED_Wr_Addr,
+        wclk        => clk_100M,
+        raddr       => LED_Rd_Addr,
+        rclk        => clk_100M,
+        din         => data_wr(5 downto 0) & LED_Data_RG_Q,
+        dout        => LED_Data_RGB
     );
 
     u_matrix_if: matrix_interface
     port map (
         CLK             => CLK_100M,
-        Frame_Addr      => Frame_Addr, -- this may need to change
-        Frame_Data      => Frame_Data, -- this may need to change
+        LED_Addr        => LED_Rd_Addr,
+        LED_Data_RGB    => LED_Data_RGB,
         R0              => R0,
         G0              => G0,
         B0              => B0,

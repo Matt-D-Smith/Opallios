@@ -11,6 +11,7 @@
 add_file -vhdl -lib work "../src/hdl/matrix_interface.vhd" 
 add_file -verilog -lib work "../src/hdl/gpmc-sync.v" 
 add_file -vhdl -lib work "../src/hdl/led_matrix_fpga_top.vhd" 
+add_file -constraint -lib work "../src/constraints/opallios_timing.sdc"
 #implementation: "Opallios_FPGA_Implmnt"
 impl -add Opallios_FPGA_Implmnt -type fpga
 

@@ -2,13 +2,9 @@
 -- Project      : Opallios
 --------------------------------------------------------------------------------
 -- File         : matrix_interface.vhd
--- Generated    : 06/19/2022
+-- Generated    : 07/06/2022
 --------------------------------------------------------------------------------
 -- Description  : 64x64 LED matrix interface module with HUB75 interface
---------------------------------------------------------------------------------
--- Revision History :
---   Date        Author        Changes
---   06/19/2022  Matt D Smith  Initial Design
 --------------------------------------------------------------------------------
 library ieee;
     use ieee.std_logic_1164.all;
@@ -17,8 +13,8 @@ library ieee;
 entity matrix_interface IS
     port (
         CLK             : in  std_logic;
-        Frame_Addr      : in  std_logic_vector(11 downto 0); -- log2(64*64)
-        Frame_Data      : in  std_logic_vector(17 downto 0); -- 18 bit color
+        LED_Addr        : out  std_logic_vector(11 downto 0); -- log2(64*64)
+        LED_Data_RGB    : in  std_logic_vector(17 downto 0); -- 18 bit color
         R0              : out std_logic;
         G0              : out std_logic;
         B0              : out std_logic;
