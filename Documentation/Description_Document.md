@@ -133,6 +133,13 @@ The total minimum frame time is 5652480 ns, divide by 32 to get one row = 176640
 
 There is a 32MB SDRAM on the board, I can use this to either achieve 24 bit color, or double buffer the frames. I probably still need sync registers to only write here at certain times.
 
+---
+NOTES
+---
+when GPMC write to any in range of LED frame data, grab both data and address, and forward to custom shaped 4096 * 18 ram. decode from there using LSB of address whether it is RG or B data. Separate register space and RAM space, do 2 different decodings for these.
+
+figure out how to do block writes on GPMC
+
 
 
 ## Parts List
