@@ -3,13 +3,13 @@ DeviceFamily=iCE40
 Device=HX4K
 DevicePackage=TQ144
 DevicePower=
-NetlistFile=
+NetlistFile=Opallios_FPGA_Implmnt/Opallios_FPGA.edf
 AdditionalEDIFFile=
 IPEDIFFile=
 DesignLib=
 DesignView=
 DesignCell=
-SynthesisSDCFile=
+SynthesisSDCFile=Opallios_FPGA_Implmnt/Opallios_FPGA.scf
 UserPinConstraintFile=
 UserSDCFile=
 PhysicalConstraintFile=../src/constraints/beaglewire_pinmap.pcf
@@ -32,7 +32,7 @@ Version=Lattice Semiconductor Corporation iCEcube - Release: 2020.12.27943 - Bui
 ProjectName=Opallios_FPGA
 Vendor=SiliconBlue
 Synthesis=synplify
-ProjectVFiles=../src/hdl/matrix_interface.vhd=work,../src/hdl/gpmc-sync.v,../src/hdl/led_matrix_fpga_top.vhd
+ProjectVFiles=../src/hdl/matrix_interface.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work
 ProjectCFiles=
 CurImplementation=Opallios_FPGA_Implmnt
 Implementations=Opallios_FPGA_Implmnt

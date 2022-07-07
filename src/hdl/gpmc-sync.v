@@ -1,22 +1,24 @@
-module gpmc_sync (input                    clk,
-                  // GPMC INTERFACE
-                  inout  [15:0]            gpmc_ad,
-                  input                    gpmc_advn,
-                  input                    gpmc_csn1,
-                  input                    gpmc_wein,
-                  input                    gpmc_oen,
-                  input                    gpmc_clk,
+module gpmc_sync #(
+    parameter ADDR_WIDTH = 16,
+    parameter DATA_WIDTH = 16
+)(
+    input                    clk,
+    // GPMC INTERFACE
+    inout  [15:0]            gpmc_ad,
+    input                    gpmc_advn,
+    input                    gpmc_csn1,
+    input                    gpmc_wein,
+    input                    gpmc_oen,
+    input                    gpmc_clk,
 
-                  // HOST INTERFACE
-                  output                   oe,
-                  output                   we,
-                  output                   cs,
-                  output [ADDR_WIDTH-1:0]  address,
-                  output [DATA_WIDTH-1:0]  data_out,
-                  input  [DATA_WIDTH-1:0]  data_in);
-
-parameter ADDR_WIDTH = 16;
-parameter DATA_WIDTH = 16;
+    // HOST INTERFACE
+    output                   oe,
+    output                   we,
+    output                   cs,
+    output [ADDR_WIDTH-1:0]  address,
+    output [DATA_WIDTH-1:0]  data_out,
+    input  [DATA_WIDTH-1:0]  data_in
+);
 
 reg [ADDR_WIDTH-1:0] gpmc_addr;
 reg [DATA_WIDTH-1:0] gpmc_data_out;

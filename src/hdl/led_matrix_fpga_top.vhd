@@ -49,7 +49,7 @@ architecture rtl of led_matrix_fpga_top is
             ADDR_WIDTH : integer := 16
         );
         port (
-            clk_100M    : in std_logic;
+            clk         : in std_logic;
 
             gpmc_ad     : inout std_logic_vector(15 downto 0);
             gpmc_advn   : in std_logic;
@@ -85,20 +85,39 @@ architecture rtl of led_matrix_fpga_top is
         );
     end component;
 
+    component dual_port_ram is
+        generic (
+            addr_width : natural := 9;--512x8
+            data_width : natural := 8
+        );
+        port (
+            write_en    : in std_logic;
+            waddr       : in std_logic_vector (addr_width - 1 downto 0);
+            wclk        : in std_logic;
+            raddr       : in std_logic_vector (addr_width - 1 downto 0);
+            rclk        : in std_logic;
+            din         : in std_logic_vector (data_width - 1 downto 0);
+            dout        : out std_logic_vector (data_width - 1 downto 0)
+        );
+    end component;
+
     -- GPMC interface signals
     constant ADDR_WIDTH : integer := 4;
     constant DATA_WIDTH : integer := 16;
     constant RAM_DEPTH  : integer := 2**ADDR_WIDTH;
 
-    type t_mem is array (natural range<>) of std_logic_vector(DATA_WIDTH-1 downto 0);
-    signal mem      : t_mem(0 to RAM_DEPTH-1);
-
-    signal oen       : std_logic;
-    signal wen       : std_logic;
-    signal csn       : std_logic;
-    signal addr     : std_logic_vector(ADDR_WIDTH-1 downto 0);
-    signal data_out : std_logic_vector(DATA_WIDTH-1 downto 0);
-    signal data_in  : std_logic_vector(DATA_WIDTH-1 downto 0);
+    -- GPMC signals
+    signal oen          : std_logic;
+    signal wen          : std_logic;
+    signal csn          : std_logic;
+    signal gpmc_addr    : std_logic_vector(ADDR_WIDTH-1 downto 0);
+    signal data_out     : std_logic_vector(DATA_WIDTH-1 downto 0);
+    signal data_in      : std_logic_vector(DATA_WIDTH-1 downto 0);
+    -- DP ram signals
+    signal oe           : std_logic;
+    signal we           : std_logic;
+    signal read_addr    : std_logic_vector(ADDR_WIDTH-1 downto 0);
+    signal raddr        : std_logic_vector(ADDR_WIDTH-1 downto 0);
 
     -- Register map
     signal frame_status : std_logic_vector(15 downto 0); -- TBD contents
@@ -113,71 +132,64 @@ architecture rtl of led_matrix_fpga_top is
 
 begin
 
-    -- I probably need to completely redo this read/write functionality to get
-    -- block writes/reads and the funky memory remapping
-    p_data_wr : process (clk_100M)
-    begin
-        if rising_edge(clk_100M) then
-            if (not csn) and (not wen) and oen then
-                mem(addr) <= data_out;
-            end if;
-        end if;
-    end process;
+    oe <= (not csn) and wen and (not oen); -- this may need to add a when for FPGA side writes
+    we <= (not csn) and (not wen) and oen; -- this may need to add a when for FPGA side writes
+    read_addr <= (others => '0'); -- zero for now, FPGA side reads later 
+    raddr <= gpmc_addr when oe = '1' else read_addr;
 
-    p_data_rd : process (clk_100M)
-    begin
-        if rising_edge(clk_100M) then
-            if (not csn) and wen and (not oen) then
-                -- define register map here
-                mem(1)                  <= frame_status;
-                mem(2)(11 downto 0)     <= LED_address;
-                mem(3)(11 downto 0)     <= LED_Data_RG;
-                mem(4)(5 downto 0)      <= LED_Data_B;
-                data_in                 <= mem(addr);
-            else
-                data_in <= (others => '0') ;
-            end if;
-        end if;
-    end process;
+    u_mem : dual_port_ram
+    generic map (
+        addr_width => 4, --16x16
+        data_width => 16
+    )
+    port map (
+        write_en    => we,
+        waddr       => gpmc_addr,
+        wclk        => clk_100M,
+        raddr       => raddr,
+        rclk        => clk_100M,
+        din         => data_out,
+        dout        => data_in
+    );
 
     u_gpmc_sync: gpmc_sync
-        generic map (
-            DATA_WIDTH => DATA_WIDTH,
-            ADDR_WIDTH => ADDR_WIDTH
-        )
-        port map (
-            clk         => clk_100M,
+    generic map (
+        DATA_WIDTH => DATA_WIDTH,
+        ADDR_WIDTH => ADDR_WIDTH
+    )
+    port map (
+        clk         => clk_100M,
 
-            gpmc_ad     => gpmc_ad,
-            gpmc_advn   => gpmc_advn,
-            gpmc_csn1   => gpmc_csn1,
-            gpmc_wein   => gpmc_wein,
-            gpmc_oen    => gpmc_oen,
-            gpmc_clk    => gpmc_clk,
+        gpmc_ad     => gpmc_ad,
+        gpmc_advn   => gpmc_advn,
+        gpmc_csn1   => gpmc_csn1,
+        gpmc_wein   => gpmc_wein,
+        gpmc_oen    => gpmc_oen,
+        gpmc_clk    => gpmc_clk,
 
-            oe          => oen,
-            we          => wen,
-            cs          => csn,
-            address     => addr,
-            data_out    => data_out,
-            data_in     => data_in
-        );
+        oe          => oen,
+        we          => wen,
+        cs          => csn,
+        address     => gpmc_addr,
+        data_out    => data_out,
+        data_in     => data_in
+    );
 
     u_matrix_if: matrix_interface
-        port map (
-            CLK             => CLK_100M,
-            Frame_Addr      => Frame_Addr, -- this may need to change
-            Frame_Data      => Frame_Data, -- this may need to change
-            R0              => R0,
-            G0              => G0,
-            B0              => B0,
-            R1              => R1,
-            G1              => G1,
-            B1              => B1,
-            Matrix_Addr     => Matrix_Addr,
-            Matrix_CLK      => Matrix_CLK,
-            BLANK           => BLANK,
-            LATCH           => LATCH
-        );
+    port map (
+        CLK             => CLK_100M,
+        Frame_Addr      => Frame_Addr, -- this may need to change
+        Frame_Data      => Frame_Data, -- this may need to change
+        R0              => R0,
+        G0              => G0,
+        B0              => B0,
+        R1              => R1,
+        G1              => G1,
+        B1              => B1,
+        Matrix_Addr     => Matrix_Addr,
+        Matrix_CLK      => Matrix_CLK,
+        BLANK           => BLANK,
+        LATCH           => LATCH
+    );
 
 end architecture;
