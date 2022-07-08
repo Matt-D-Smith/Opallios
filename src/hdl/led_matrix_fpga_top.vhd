@@ -16,6 +16,7 @@ entity led_matrix_fpga_top is
         clk_100M    : in  std_logic;
         led         : out std_logic_vector(3 downto 0);
         btn         : in  std_logic_vector(1 downto 0);
+        sw          : in  std_logic_vector(1 downto 0);
         -- GPMC Interface
         gpmc_ad     : inout  std_logic_vector(15 downto 0);
         gpmc_advn   : in  std_logic;
@@ -98,8 +99,10 @@ architecture rtl of led_matrix_fpga_top is
     end component;
 
     -- S_ for start range, E_ for end range, R_ for register
-    constant S_MATRIX_ADDR : std_logic_vector := x"2000"; -- map 4096x18 to 8192x16
-    constant E_MATRIX_ADDR : std_logic_vector := x"3FFF";
+    constant S_REGS_ADDR    : std_logic_vector := x"0000"; -- map 16x16 register space
+    constant E_REGS_ADDR    : std_logic_vector := x"000F";
+    constant S_MATRIX_ADDR  : std_logic_vector := x"2000"; -- map 4096x18 to 8192x16
+    constant E_MATRIX_ADDR  : std_logic_vector := x"3FFF";
 
     -- GPMC constants
     constant GPMC_ADDR_WIDTH    : integer := 16;
@@ -138,6 +141,9 @@ architecture rtl of led_matrix_fpga_top is
 
 begin
 
+    --temporary output assignments
+    led <= (others => '0'); 
+
     u_gpmc_sync: gpmc_sync
     generic map (
         DATA_WIDTH => GPMC_DATA_WIDTH,
@@ -163,6 +169,7 @@ begin
 
     oe <= (not csn) and wen and (not oen); -- this may need to add a when for FPGA side writes
     we <= (not csn) and (not wen) and oen; -- this may need to add a when for FPGA side writes
+    we_regs <= we when (gpmc_addr >= S_REGS_ADDR) and (gpmc_addr <= E_REGS_ADDR) else '0';
     read_addr <= (others => '0'); -- zero for now, FPGA side reads later 
     raddr <= gpmc_addr when oe = '1' else read_addr;
 

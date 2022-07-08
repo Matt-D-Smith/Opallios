@@ -39,7 +39,7 @@ begin
         R1              <= '1';
         G1              <= '1';
         B1              <= '1';
-        Matrix_Addr     <= (others => '1') ;
+        LED_Addr        <= (others => '1') ;
         Matrix_CLK      <= '1';
         BLANK           <= '1';
         LATCH           <= '1';
