@@ -132,6 +132,7 @@ architecture rtl of led_matrix_fpga_top is
     signal LED_Rd_Addr      : std_logic_vector(10 downto 0); -- log2(64*64) bits
     signal LED_Data_RG_D    : std_logic_vector(11 downto 0);
     signal LED_Data_RG_Q    : std_logic_vector(11 downto 0);
+    signal LED_Wr_Data_RGB  : std_logic_vector(17 downto 0); -- 18 bit color
     signal LED_Data_RGB_lo  : std_logic_vector(17 downto 0); -- 18 bit color
     signal LED_Data_RGB_hi  : std_logic_vector(17 downto 0); -- 18 bit color
 
@@ -202,6 +203,8 @@ begin
         end if;
     end process;
 
+    LED_Wr_Data_RGB <= data_wr(5 downto 0) & LED_Data_RG_Q;
+
     u_matrix_ram_lo : dual_port_ram -- store lower address data
     generic map (
         addr_width => 11, --2096x18
@@ -213,7 +216,7 @@ begin
         wclk        => clk_100M,
         raddr       => LED_Rd_Addr,
         rclk        => clk_100M,
-        din         => data_wr(5 downto 0) & LED_Data_RG_Q,
+        din         => LED_Wr_Data_RGB,
         dout        => LED_Data_RGB_lo
     );
 
@@ -228,7 +231,7 @@ begin
         wclk        => clk_100M,
         raddr       => LED_Rd_Addr,
         rclk        => clk_100M,
-        din         => data_wr(5 downto 0) & LED_Data_RG_Q,
+        din         => LED_Wr_Data_RGB,
         dout        => LED_Data_RGB_hi
     );
 

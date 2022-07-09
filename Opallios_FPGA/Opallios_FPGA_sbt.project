@@ -7,12 +7,12 @@ NetlistFile=Opallios_FPGA_Implmnt/Opallios_FPGA.edf
 AdditionalEDIFFile=
 IPEDIFFile=
 DesignLib=Opallios_FPGA_Implmnt/sbt/netlist/oadb-led_matrix_fpga_top
-DesignView=_ep
+DesignView=_rt
 DesignCell=led_matrix_fpga_top
 SynthesisSDCFile=Opallios_FPGA_Implmnt/Opallios_FPGA.scf
 UserPinConstraintFile=
 UserSDCFile=
-PhysicalConstraintFile=../src/constraints/beaglewire_pinmap.pcf
+PhysicalConstraintFile=
 BackendImplPathName=
 Devicevoltage=1.14
 DevicevoltagePerformance=+/-5%(datasheet default)
@@ -32,12 +32,12 @@ Version=Lattice Semiconductor Corporation iCEcube - Release: 2020.12.27943 - Bui
 ProjectName=Opallios_FPGA
 Vendor=SiliconBlue
 Synthesis=synplify
-ProjectVFiles=../src/hdl/matrix_interface.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work,../src/hdl/dual_port_ram.vhd=work,../src/hdl/matrix_control_sm.vhd=work
+ProjectVFiles=../src/hdl/dual_port_ram.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work,../src/hdl/matrix_control_sm.vhd=work,../src/hdl/matrix_interface.vhd=work
 ProjectCFiles=../src/constraints/opallios_timing.sdc
 CurImplementation=Opallios_FPGA_Implmnt
 Implementations=Opallios_FPGA_Implmnt
 StartFromSynthesis=yes
-IPGeneration=true
+IPGeneration=false
 
 [lse options]
 CarryChain=True
@@ -46,7 +46,7 @@ CommandLineOptions=
 EBRUtilization=100.00
 FSMEncodingStyle=Auto
 FixGatedClocks=True
-I/OInsertion=False
+I/OInsertion=True
 IntermediateFileDump=False
 LoopLimit=1950
 MaximalFanout=10000
@@ -71,7 +71,7 @@ PlacerEffortLevel=std
 PlacerAutoLutCascade=yes
 PlacerAutoRamCascade=yes
 PlacerPowerDriven=no
-PlacerAreaDriven=no
+PlacerAreaDriven=yes
 RouteWithTimingDriven=yes
 RouteWithPinPermutation=yes
 BitmapSPIFlashMode=yes
@@ -84,5 +84,5 @@ BitmapSetSecurity=no
 BitmapSetNoUsedIONoPullup=no
 FloorPlannerShowFanInNets=yes
 FloorPlannerShowFanOutNets=yes
-HookTo3rdPartyTextEditor=yes
+HookTo3rdPartyTextEditor=no
 

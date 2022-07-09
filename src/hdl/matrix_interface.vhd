@@ -60,9 +60,15 @@ architecture rtl of matrix_interface is
     signal Latch_int        : std_logic;
     
 
-    type Row_Data_t is array (63 downto 0) of std_logic_vector(17 downto 0);
-    signal Row_Data_lo : Row_Data_t;
-    signal Row_Data_hi : Row_Data_t;
+    -- type Row_Data_t is array (63 downto 0) of std_logic_vector(2 downto 0);
+    -- signal Row_Data_lo : Row_Data_t;
+    -- signal Row_Data_hi : Row_Data_t;
+    signal R0_Data : std_logic_vector(63 downto 0);
+    signal G0_Data : std_logic_vector(63 downto 0);
+    signal B0_Data : std_logic_vector(63 downto 0);
+    signal R1_Data : std_logic_vector(63 downto 0);
+    signal G1_Data : std_logic_vector(63 downto 0);
+    signal B1_Data : std_logic_vector(63 downto 0);
 
 begin
 
@@ -95,8 +101,12 @@ begin
             LED_RAM_Load_d <= LED_RAM_Load; -- delay by one (two?) clock(s) for ram delay
             LED_RAM_Load_q <= LED_RAM_Load_d;
             if LED_RAM_Load_q = '1' then
-                Row_Data_lo(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_lo;
-                Row_Data_hi(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi;
+                R0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count)));
+                G0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count))+6);
+                B0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count))+12);
+                R1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count)));
+                G1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+6);
+                B1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+12);
                 Matrix_Addr_d <= LED_RAM_Addr_int(10 downto 6);
             end if;
 
@@ -111,12 +121,12 @@ begin
     begin
         if rising_edge(CLK_Matrix) then
             if Shift_Data = '1' then
-                R0 <= Row_Data_lo(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count)));
-                G0 <= Row_Data_lo(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count))+6);
-                B0 <= Row_Data_lo(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count))+12);
-                R1 <= Row_Data_hi(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count)));
-                G1 <= Row_Data_hi(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count))+6);
-                B1 <= Row_Data_hi(to_integer(Shift_Data_Cntr))(to_integer(unsigned(RGB_bit_count))+12);
+                R0 <= R0_Data(to_integer(Shift_Data_Cntr));
+                G0 <= G0_Data(to_integer(Shift_Data_Cntr));
+                B0 <= B0_Data(to_integer(Shift_Data_Cntr));
+                R1 <= R1_Data(to_integer(Shift_Data_Cntr));
+                G1 <= G1_Data(to_integer(Shift_Data_Cntr));
+                B1 <= B1_Data(to_integer(Shift_Data_Cntr));
                 Shift_Data_Cntr <= Shift_Data_Cntr + 1;
             end if;
         end if;

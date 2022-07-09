@@ -41,7 +41,8 @@ architecture rtl of matrix_control_sm is
     signal incr_matrix_delay_cnt    : std_logic;
 
     signal incr_addr    : std_logic;
-    signal ram_addr     : unsigned(10 downto 0);
+    signal col_addr     : unsigned(5 downto 0);
+    signal row_count    : unsigned(4 downto 0);
 
 begin
 
@@ -83,21 +84,24 @@ begin
     begin
         if rising_edge(CLK) then
             if incr_addr = '1' then
-                ram_addr <= ram_addr + 1; -- roll over back to 0 when done
+                col_addr <= col_addr + 1; -- roll over back to 0 when done
             end if;
         end if;
     end process;
-    LED_RAM_Addr <= std_logic_vector(ram_addr);
+    LED_RAM_Addr <= std_logic_vector(row_count) & std_logic_vector(col_addr);
     LED_RAM_Load <= incr_addr;
 
     p_state : process(CLK_Matrix)
     begin 
         if rising_edge(CLK_Matrix) then
             -- defaults
+            incr_ram_delay_cnt <= '0';
             rst_ram_delay_cnt <= '0';
+            incr_matrix_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
             Latch <= '0';
             Blank <= '0';
+            incr_addr <= '0';
 
             -- next state
             state <= next_state;
@@ -128,9 +132,10 @@ begin
                         if RGB_bit_count_int = to_unsigned(6,RGB_bit_count_int'length) then
                             next_state <= Load_Row_RAM_Data;
                             RGB_bit_count_int <= (others => '0');
+                            row_count <= row_count + 1;
                         else
                             next_state <= Shift_Data_Out;
-                            RGB_bit_count_int <= RGB_bit_count_int + 1;
+                            RGB_bit_count_int <= RGB_bit_count_int + 1; -- roll back over when done
                         end if;
                         rst_matrix_delay_cnt <= '1';
                     end if;
