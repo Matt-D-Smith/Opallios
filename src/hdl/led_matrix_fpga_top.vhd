@@ -67,8 +67,9 @@ architecture rtl of led_matrix_fpga_top is
     component matrix_interface is
         port (
             CLK             : in  std_logic;
-            LED_Addr        : out std_logic_vector(11 downto 0); -- log2(64*64)
-            LED_Data_RGB    : in  std_logic_vector(17 downto 0); -- 18 bit color
+            LED_Data_RGB_lo : in  std_logic_vector(17 downto 0); -- 18 bit color
+            LED_Data_RGB_hi : in  std_logic_vector(17 downto 0); -- 18 bit color
+            LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64)
             R0              : out std_logic;
             G0              : out std_logic;
             B0              : out std_logic;
@@ -78,7 +79,8 @@ architecture rtl of led_matrix_fpga_top is
             Matrix_Addr     : out std_logic_vector(4 downto 0);
             Matrix_CLK      : out std_logic;
             BLANK           : out std_logic;
-            LATCH           : out std_logic
+            LATCH           : out std_logic;
+            Next_Frame      : out std_logic
         );
     end component;
 
@@ -123,21 +125,18 @@ architecture rtl of led_matrix_fpga_top is
     signal read_addr        : std_logic_vector(GPMC_ADDR_WIDTH-1 downto 0);
     signal raddr            : std_logic_vector(GPMC_ADDR_WIDTH-1 downto 0);
     -- matrix LED ram signals
-    signal we_matrix        : std_logic;
+    signal we_matrix_lo     : std_logic;
+    signal we_matrix_hi     : std_logic;
     signal we_matrix_buf    : std_logic;
-    signal LED_Wr_Addr      : std_logic_vector(11 downto 0); -- log2(64*64) bits
-    signal LED_Rd_Addr      : std_logic_vector(11 downto 0); -- log2(64*64) bits
+    signal LED_Wr_Addr      : std_logic_vector(10 downto 0); -- log2(64*64) bits
+    signal LED_Rd_Addr      : std_logic_vector(10 downto 0); -- log2(64*64) bits
     signal LED_Data_RG_D    : std_logic_vector(11 downto 0);
     signal LED_Data_RG_Q    : std_logic_vector(11 downto 0);
-    signal LED_Data_RGB     : std_logic_vector(17 downto 0);
+    signal LED_Data_RGB_lo  : std_logic_vector(17 downto 0); -- 18 bit color
+    signal LED_Data_RGB_hi  : std_logic_vector(17 downto 0); -- 18 bit color
 
     -- Register map
     signal frame_status : std_logic_vector(15 downto 0); -- TBD contents
-
-    -- matrix interface
-    -- this may need to change, frame sync signals and memory interface 
-    signal Frame_Addr   : std_logic_vector(11 downto 0); -- log2(64*64) bits
-    signal Frame_data   : std_logic_vector(17 downto 0); -- 18 bit color
 
 begin
 
@@ -188,9 +187,10 @@ begin
         dout        => data_rd
     );
 
-    LED_Wr_Addr <= gpmc_addr(12 downto 1); -- divide by 2 to map 8192 to 4096
+    LED_Wr_Addr <= gpmc_addr(11 downto 1); -- divide by 2 to map 8192 to 4096
     we_matrix_buf <= we when (gpmc_addr >= S_MATRIX_ADDR) and (gpmc_addr <= E_MATRIX_ADDR) else '0';
-    we_matrix <= we_matrix_buf when (gpmc_addr(0) = '1') else '0'; -- only enable we when writing to the blue data reg
+    we_matrix_lo <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(11) = '0') else '0'; -- only enable we when writing to the blue data reg, lo regs
+    we_matrix_hi <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(11) = '1') else '0'; -- only enable we when writing to the blue data reg, hi regs
 
     p_RG_reg: process (clk_100M)
     begin
@@ -202,26 +202,42 @@ begin
         end if;
     end process;
 
-    u_matrix_ram : dual_port_ram
+    u_matrix_ram_lo : dual_port_ram -- store lower address data
     generic map (
-        addr_width => 12, --4096x18
+        addr_width => 11, --2096x18
         data_width => 18
     )
     port map (
-        write_en    => we_matrix,
+        write_en    => we_matrix_lo,
         waddr       => LED_Wr_Addr,
         wclk        => clk_100M,
         raddr       => LED_Rd_Addr,
         rclk        => clk_100M,
         din         => data_wr(5 downto 0) & LED_Data_RG_Q,
-        dout        => LED_Data_RGB
+        dout        => LED_Data_RGB_lo
+    );
+
+    u_matrix_ram_hi : dual_port_ram -- store upper address data
+    generic map (
+        addr_width => 11, --2096x18
+        data_width => 18
+    )
+    port map (
+        write_en    => we_matrix_hi,
+        waddr       => LED_Wr_Addr,
+        wclk        => clk_100M,
+        raddr       => LED_Rd_Addr,
+        rclk        => clk_100M,
+        din         => data_wr(5 downto 0) & LED_Data_RG_Q,
+        dout        => LED_Data_RGB_hi
     );
 
     u_matrix_if: matrix_interface
     port map (
         CLK             => CLK_100M,
-        LED_Addr        => LED_Rd_Addr,
-        LED_Data_RGB    => LED_Data_RGB,
+        LED_Data_RGB_lo => LED_Data_RGB_lo,
+        LED_Data_RGB_hi => LED_Data_RGB_hi,
+        LED_RAM_Addr    => LED_Rd_Addr,
         R0              => R0,
         G0              => G0,
         B0              => B0,
@@ -231,7 +247,8 @@ begin
         Matrix_Addr     => Matrix_Addr,
         Matrix_CLK      => Matrix_CLK,
         BLANK           => BLANK,
-        LATCH           => LATCH
+        LATCH           => LATCH,
+        Next_Frame      => open
     );
 
 end architecture;
