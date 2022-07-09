@@ -151,6 +151,21 @@ The total minimum frame time is 5652480 ns, divide by 32 to get one row = 176640
 
 There is a 32MB SDRAM on the board, I can use this to either achieve 24 bit color, or double buffer the frames. I probably still need sync registers to only write here at certain times.
 
+## Programming the FPGA
+
+```
+cd BeagleWire/load-fw
+sudo ./bw-spi.sh ../../fpga-loads/led_matrix_fpga_top_bitmap.bin
+```
+
+## Read/Write to FPGA
+
+```
+cd BeagleWire/bridge-lib
+sudo ./memmap -a 0 -w 1234  # Write
+sudo ./memmap -a 0          # Read
+```
+
 ---
 Development notes
 ---
