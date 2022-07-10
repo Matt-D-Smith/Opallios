@@ -21,7 +21,7 @@ entity led_matrix_fpga_top is
         gpmc_ad     : inout  std_logic_vector(15 downto 0);
         gpmc_advn   : in  std_logic;
         gpmc_csn1   : in  std_logic;
-        gpmc_wein   : in  std_logic;
+        gpmc_wen    : in  std_logic;
         gpmc_oen    : in  std_logic;
         gpmc_clk    : in  std_logic;
         -- HUB75 interface
@@ -51,7 +51,7 @@ architecture rtl of led_matrix_fpga_top is
             gpmc_ad     : inout std_logic_vector(15 downto 0);
             gpmc_advn   : in std_logic;
             gpmc_csn1   : in std_logic;
-            gpmc_wein   : in std_logic;
+            gpmc_wen    : in std_logic;
             gpmc_oen    : in std_logic;
             gpmc_clk    : in std_logic;
 
@@ -155,7 +155,7 @@ begin
         gpmc_ad     => gpmc_ad,
         gpmc_advn   => gpmc_advn,
         gpmc_csn1   => gpmc_csn1,
-        gpmc_wein   => gpmc_wein,
+        gpmc_wen    => gpmc_wen,
         gpmc_oen    => gpmc_oen,
         gpmc_clk    => gpmc_clk,
 

@@ -1,4 +1,11 @@
+# Ignore icecube logs and generated files
 Opallios_FPGA/Opallios_FPGA_Implmnt/
 Opallios_FPGA/*.log
 Opallios_FPGA/*.bak
 Opallios_FPGA/synlog.tcl
+
+# Ignore simulation logs and compiled sim libs
+sim/matrix/
+sim/work/
+sim/*.mti
+sim/*.wlf

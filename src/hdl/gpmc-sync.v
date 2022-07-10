@@ -7,7 +7,7 @@ module gpmc_sync #(
     inout  [15:0]            gpmc_ad,
     input                    gpmc_advn,
     input                    gpmc_csn1,
-    input                    gpmc_wein,
+    input                    gpmc_wen,
     input                    gpmc_oen,
     input                    gpmc_clk,
 
@@ -54,21 +54,27 @@ SB_IO # (
     .PULLUP(1'b 0)
 ) gpmc_ad_io [15:0] (
     .PACKAGE_PIN(gpmc_ad),
-    .OUTPUT_ENABLE(!gpmc_csn1 && gpmc_advn && !gpmc_oen && gpmc_wein),
+    .OUTPUT_ENABLE(!gpmc_csn1 && gpmc_advn && !gpmc_oen && gpmc_wen),
     .D_OUT_0(gpmc_data_out),
-    .D_IN_0(gpmc_data_in)
+    .D_OUT_1(),
+    .D_IN_0(gpmc_data_in),
+    .D_IN_1(),
+    .CLOCK_ENABLE(1'b0),
+    .INPUT_CLK(1'b0),
+    .OUTPUT_CLK(1'b0),
+    .LATCH_INPUT_VALUE(1'b1)
 );
 
 always @ (negedge gpmc_clk)
 begin : GPMC_LATCH_ADDRESS   
-    if (!gpmc_csn1 && !gpmc_advn && gpmc_wein && gpmc_oen)
+    if (!gpmc_csn1 && !gpmc_advn && gpmc_wen && gpmc_oen)
         gpmc_addr <= gpmc_data_in;
 end
 
 always @ (negedge gpmc_clk)
 begin : GEN_RAM_STROBE_SIGNAL
     csn_bridge <= gpmc_csn1;
-    wen_bridge <= gpmc_wein;
+    wen_bridge <= gpmc_wen;
     oen_bridge <= gpmc_oen;
     write_bridge <= gpmc_data_in;
 end
