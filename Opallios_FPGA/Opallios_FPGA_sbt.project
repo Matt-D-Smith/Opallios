@@ -32,7 +32,7 @@ Version=Lattice Semiconductor Corporation iCEcube - Release: 2020.12.27943 - Bui
 ProjectName=Opallios_FPGA
 Vendor=SiliconBlue
 Synthesis=synplify
-ProjectVFiles=../src/hdl/dual_port_ram.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work,../src/hdl/matrix_control_sm.vhd=work,../src/hdl/matrix_interface.vhd=work
+ProjectVFiles=../src/hdl/matrix_interface.vhd=work,../src/hdl/gpmc-sync.v=work,../src/hdl/led_matrix_fpga_top.vhd=work,../src/hdl/dual_port_ram.vhd=work,../src/hdl/matrix_control_sm.vhd=work
 ProjectCFiles=../src/constraints/opallios_timing.sdc
 CurImplementation=Opallios_FPGA_Implmnt
 Implementations=Opallios_FPGA_Implmnt
