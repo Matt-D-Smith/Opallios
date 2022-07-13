@@ -49,6 +49,6 @@ begin
         end if;
     end process latch_proc;
 
-    CCOUT_n <= NOT latch when OE_n = '0' else '1';
+    CCOUT_n <= NOT latch when OE_n = '0' else (others => '1') ;
 
 end arch;
