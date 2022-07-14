@@ -47,13 +47,13 @@ architecture rtl of matrix_interface is
     end component;
 
     signal CLK_matrix       : std_logic;
-    signal Clk_Div_Count    : unsigned(1 downto 0); --25 MHz
+    signal Clk_Div_Count    : unsigned(1 downto 0) := (others => '0'); --25 MHz
     signal LED_RAM_Load     : std_logic;
     signal LED_RAM_Load_d   : std_logic;
     signal LED_RAM_Load_q   : std_logic;
-    signal RGB_bit_count    : std_logic_vector(2 downto 0);
+    signal RGB_bit_count    : std_logic_vector(2 downto 0) := (others => '0');
     signal Shift_Data       : std_logic;
-    signal Shift_Data_Cntr  : unsigned(5 downto 0);
+    signal Shift_Data_Cntr  : unsigned(5 downto 0) := (others => '0');
     signal Matrix_Addr_d    : std_logic_vector(Matrix_Addr'length-1 downto 0);
     signal Matrix_Addr_q    : std_logic_vector(Matrix_Addr'length-1 downto 0);
     signal LED_RAM_Addr_int : std_logic_vector(LED_RAM_Addr'length-1 downto 0);

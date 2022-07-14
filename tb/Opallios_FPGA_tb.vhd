@@ -79,9 +79,9 @@ begin
     --TB signals
     p_clk_100M : process
     begin
-        clk_100M <= '0';
-        wait for 5 ns;
         clk_100M <= '1';
+        wait for 5 ns;
+        clk_100M <= '0';
         wait for 5 ns;
     end process;
 
@@ -184,6 +184,16 @@ begin
     gpmc_send('0',x"0001",x"0000");
     -- read reg 0
     gpmc_send('0',x"0000",x"0000");
+
+    -- Write some data to the video memory
+    gpmc_send('1',x"2000",x"02AA");
+    gpmc_send('1',x"2001",x"0015");
+    gpmc_send('1',x"2002",x"0155");
+    gpmc_send('1',x"2003",x"002A");
+    gpmc_send('1',x"2004",x"00CC");
+    gpmc_send('1',x"2005",x"0033");
+    gpmc_send('1',x"2006",x"0333");
+    gpmc_send('1',x"2007",x"000C");
 
 
     wait;
