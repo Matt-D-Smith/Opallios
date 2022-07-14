@@ -131,7 +131,7 @@ begin
         for i in 0 to 2 loop
             MATRIX_TB <= (others => (others => (others => '0')));
             MATRIX_TB(i)(to_integer(unsigned(A_IN))) <= not COL_RGBRGB(i); 
-            MATRIX_TB(i)(to_integer(unsigned(A_IN))+64) <= not COL_RGBRGB(i+3);
+            MATRIX_TB(i)(to_integer(unsigned(A_IN))+32) <= not COL_RGBRGB(i+3);
         end loop;
     end process; -- matrix_tb_proc
 

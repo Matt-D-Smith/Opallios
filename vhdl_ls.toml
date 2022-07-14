@@ -5,6 +5,7 @@
 matrix.files = [
   'tb/matrix/*.vhd',
 ]
-matrix_fpga.files = [
+work.files = [
   'src/hdl/*.vhd',
+  'tb/Opallios_FPGA_tb.vhd',
 ]
