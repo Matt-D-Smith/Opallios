@@ -22,5 +22,6 @@ add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/MATRIX_TB(1)
 add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/MATRIX_TB(2)
 
 # run 
-run 500 us
+# run 500 us
+run 11 ms
 wave zoom full

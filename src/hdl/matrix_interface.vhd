@@ -98,6 +98,7 @@ begin
     begin
         if rising_edge(CLK) then
             Matrix_Addr_d <= Matrix_Addr_q;
+            Matrix_Addr_q <= Matrix_Addr_d;
             LED_RAM_Load_d <= LED_RAM_Load; -- delay by one (two?) clock(s) for ram delay
             LED_RAM_Load_q <= LED_RAM_Load_d;
             if LED_RAM_Load_q = '1' then
@@ -107,11 +108,10 @@ begin
                 R1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count)));
                 G1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+6);
                 B1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+12);
-                Matrix_Addr_d <= LED_RAM_Addr_int(10 downto 6);
             end if;
 
             if Latch_int = '1' then
-                Matrix_Addr_q <= Matrix_Addr_d;
+                Matrix_Addr_d <= LED_RAM_Addr_int(10 downto 6);
             end if;
         end if;
     end process;

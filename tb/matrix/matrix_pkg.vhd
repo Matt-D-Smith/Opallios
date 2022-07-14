@@ -15,6 +15,6 @@ library ieee;
     use ieee.numeric_std.all;
 
 package matrix_pkg is
-    type t_matrix is array (63 downto 0) of std_logic_vector(63 downto 0);
+    type t_matrix is array (0 to 63) of std_logic_vector(63 downto 0);
     type t_RGB_matrix is array (2 downto 0) of t_matrix;
 end package ;
