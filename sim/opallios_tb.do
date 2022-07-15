@@ -20,6 +20,12 @@ add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/*
 add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/MATRIX_TB(0)
 add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/MATRIX_TB(1)
 add wave -group {Matrix Panel} Opallios_FPGA_tb/u_matrix/MATRIX_TB(2)
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(0)/u_ICN2037_1/*
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(1)/u_ICN2037_1/*
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(2)/u_ICN2037_1/*
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(0)/u_ICN2037_4/*
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(1)/u_ICN2037_4/*
+add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(2)/u_ICN2037_4/*
 
 # run 
 # run 500 us

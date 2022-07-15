@@ -128,11 +128,13 @@ begin
 
     matrix_tb_proc : process( COL_RGBRGB, A_IN)
     begin
-        for i in 0 to 2 loop
-            MATRIX_TB <= (others => (others => (others => '0')));
-            MATRIX_TB(i)(to_integer(unsigned(A_IN))) <= not COL_RGBRGB(i); 
-            MATRIX_TB(i)(to_integer(unsigned(A_IN))+32) <= not COL_RGBRGB(i+3);
-        end loop;
+        MATRIX_TB <= (others => (others => (others => '0')));
+        MATRIX_TB(0)(to_integer(unsigned(A_IN))) <= not COL_RGBRGB(0);
+        MATRIX_TB(1)(to_integer(unsigned(A_IN))) <= not COL_RGBRGB(1);
+        MATRIX_TB(2)(to_integer(unsigned(A_IN))) <= not COL_RGBRGB(2);
+        MATRIX_TB(0)(to_integer(unsigned(A_IN))+32) <= not COL_RGBRGB(3);
+        MATRIX_TB(1)(to_integer(unsigned(A_IN))+32) <= not COL_RGBRGB(4);
+        MATRIX_TB(2)(to_integer(unsigned(A_IN))+32) <= not COL_RGBRGB(5);
     end process; -- matrix_tb_proc
 
 end arch;
