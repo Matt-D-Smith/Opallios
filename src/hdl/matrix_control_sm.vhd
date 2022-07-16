@@ -13,6 +13,7 @@ library ieee;
 entity matrix_control_sm IS
     port (
         CLK             : in  std_logic;
+        RSTn            : in  std_logic;
         CLK_Matrix      : in  std_logic;
         LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
         LED_RAM_Load    : out std_logic;
@@ -20,7 +21,9 @@ entity matrix_control_sm IS
         Shift_Data      : out std_logic;
         Blank           : out std_logic;
         Latch           : out std_logic;
-        RGB_bit_count   : out std_logic_vector(2 downto 0)
+        RGB_bit_count   : out std_logic_vector(2 downto 0);
+        --debugging
+        TP              : out std_logic_vector(7 downto 0)
     );
 end matrix_control_sm;
 
@@ -29,8 +32,12 @@ architecture rtl of matrix_control_sm is
     signal Frame_Timer          : unsigned(26 downto 0) := (others => '0');
     signal RGB_bit_count_int    : unsigned(2 downto 0) := (others => '0');
 
-    type state_type is (Startup, Load_Row_RAM_Data, Shift_Data_Out, Latch_Data, wait_BCM, wait_row);
+    type state_type is (Startup, Load_Row_RAM_Data, Shift_Data_Out, Latch_Data, wait_BCM);
     signal state, next_state : state_type;
+
+    attribute syn_encoding : string;
+    attribute syn_encoding of state : signal is "safe";
+    attribute syn_encoding of next_state : signal is "safe";    
 
     signal ram_delay_cnt        : unsigned(7 downto 0) := (others => '0');
     signal rst_ram_delay_cnt    : std_logic;
@@ -44,11 +51,23 @@ architecture rtl of matrix_control_sm is
     signal col_addr     : unsigned(5 downto 0) := (others => '0');
     signal row_count    : unsigned(4 downto 0) := (others => '0');
 
+    signal RSTn_Matrix : std_logic := '0';
+
 begin
 
-    p_frame_timer : process (CLK) -- independent of drawing the frame
+    p_matrix_rst_gen : process (CLK_Matrix)
     begin
-        if rising_edge(CLK) then
+        if rising_edge(CLK_Matrix) then
+            RSTn_Matrix <= RSTn;
+        end if;
+    end process;
+
+    p_frame_timer : process (CLK, RSTn) -- independent of drawing the frame
+    begin
+        if RSTn = '0' then
+            Next_Frame <= '0';
+            Frame_Timer <= (others => '0');
+        elsif rising_edge(CLK) then
             Next_Frame <= '0';
             Frame_Timer <= Frame_Timer + 1;
             if (Frame_Timer = to_unsigned(1000000-1,Frame_Timer'length)) then -- 100 Hz
@@ -58,9 +77,11 @@ begin
         end if;
     end process;
 
-    p_ram_delay_counter : process (CLK) -- count for loading RAM into row data buffer
+    p_ram_delay_counter : process (CLK, RSTn) -- count for loading RAM into row data buffer
     begin
-        if rising_edge(CLK) then
+        if RSTn = '0' then
+            ram_delay_cnt <= (others => '0'); 
+        elsif rising_edge(CLK) then
             if rst_ram_delay_cnt = '1' then 
                 ram_delay_cnt <= (others => '0'); 
             elsif incr_ram_delay_cnt = '1' then
@@ -69,9 +90,11 @@ begin
         end if;
     end process;
 
-    p_matrix_delay_counter : process (CLK_Matrix) -- count for state machine delays relative to matrix clk
+    p_matrix_delay_counter : process (CLK_Matrix, RSTn_Matrix) -- count for state machine delays relative to matrix clk
     begin
-        if rising_edge(CLK_Matrix) then
+        if RSTn_Matrix = '0' then
+            matrix_delay_cnt <= (others => '0'); 
+        elsif rising_edge(CLK_Matrix) then
             if rst_matrix_delay_cnt = '1' then 
                 matrix_delay_cnt <= (others => '0'); 
             elsif incr_matrix_delay_cnt = '1' then
@@ -80,9 +103,11 @@ begin
         end if;
     end process;
 
-    p_address_counter : process (CLK) -- count address, range 0 to 2048, as we are using half the display for addressing
+    p_address_counter : process (CLK, RSTn) -- count address, range 0 to 2048, as we are using half the display for addressing
     begin
-        if rising_edge(CLK) then
+        if RSTn = '0' then
+            col_addr <= (others => '0');
+        elsif rising_edge(CLK) then
             if incr_addr = '1' then
                 col_addr <= col_addr + 1; -- roll over back to 0 when done
             end if;
@@ -91,9 +116,16 @@ begin
     LED_RAM_Addr <= std_logic_vector(row_count) & std_logic_vector(col_addr);
     LED_RAM_Load <= incr_addr;
 
-    p_next_state : process(CLK_Matrix)
+    p_next_state : process(CLK_Matrix, RSTn_Matrix)
     begin 
-        if rising_edge(CLK_Matrix) then
+        if RSTn_Matrix = '0' then
+            state <= Startup;
+            next_state <= Load_Row_RAM_Data;
+            rst_ram_delay_cnt <= '0';
+            rst_matrix_delay_cnt <= '0';
+            RGB_bit_count_int <= (others => '0');
+            row_count <= (others => '0');
+        elsif rising_edge(CLK_Matrix) then
             -- defaults
             rst_ram_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
@@ -164,5 +196,15 @@ begin
     end process;
 
     RGB_bit_count <= std_logic_vector(RGB_bit_count_int);
+
+    -- debug
+    TP(0) <= '1' when state = Startup else '0';
+    TP(1) <= '1' when state = Load_Row_RAM_Data else '0';
+    TP(2) <= '1' when state = Shift_Data_Out else '0';
+    TP(3) <= '1' when state = Latch_Data else '0';
+    TP(4) <= '1' when state = wait_BCM else '0';
+    TP(5) <= CLK_Matrix;
+    TP(6) <= '0';
+    TP(7) <= '0';
 
 end architecture;

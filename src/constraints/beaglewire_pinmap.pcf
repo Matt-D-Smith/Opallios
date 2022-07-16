@@ -24,22 +24,22 @@ set_io sw[0] 33
 set_io sw[1] 34
 
 # pmod
-# set_io pmod1[4] 38 # PMOD1 A1 1
+set_io TP[0] 38 # PMOD1 A1 1
+set_io TP[1] 41 # PMOD1 A2 3
+set_io TP[2] 43 # PMOD1 A3 5
+set_io TP[3] 45 # PMOD1 A4 7
 # set_io pmod1[0] 37 # PMOD1 B1 2
-# set_io pmod1[5] 41 # PMOD1 A2 3
 # set_io pmod1[1] 39 # PMOD1 B2 4
-# set_io pmod1[6] 43 # PMOD1 A3 5
 # set_io pmod1[2] 42 # PMOD1 B3 6
-# set_io pmod1[7] 45 # PMOD1 A4 7
 # set_io pmod1[3] 44 # PMOD1 B4 8
 
-# set_io pmod2[4] 48 # PMOD2 A1 1
+set_io TP[4] 48 # PMOD2 A1 1
+set_io TP[5] 52 # PMOD2 A2 3
+set_io TP[6] 56 # PMOD2 A3 5
+set_io TP[7] 62 # PMOD2 A4 7
 # set_io pmod2[0] 47 # PMOD2 B1 2
-# set_io pmod2[5] 52 # PMOD2 A2 3
 # set_io pmod2[1] 49 # PMOD2 B2 4
-# set_io pmod2[6] 56 # PMOD2 A3 5
 # set_io pmod2[2] 55 # PMOD2 B3 6
-# set_io pmod2[7] 62 # PMOD2 A4 7
 # set_io pmod2[3] 60 # PMOD2 B4 8
 
 set_io R0 110 # PMOD3 A1 1

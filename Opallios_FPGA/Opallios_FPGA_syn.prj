@@ -1,7 +1,7 @@
 #--  Synopsys, Inc.
 #--  Version L-2016.09L+ice40
 #--  Project file C:\Users\Matt\Desktop\Hardware-Stuff\led_matrix\Opallios\Opallios_FPGA\Opallios_FPGA_syn.prj
-#--  Written on Sun Jun 19 22:37:00 2022
+#--  Written on Fri Jul 15 19:38:30 2022
 
 
 #project files
@@ -65,9 +65,6 @@ set_option -resource_sharing 1
 
 # Compiler Options
 set_option -auto_infer_blackbox 0
-
-# Compiler Options
-set_option -vhdl2008 1
 
 #automatic place and route (vendor) options
 set_option -write_apr_constraint 1

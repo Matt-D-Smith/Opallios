@@ -34,7 +34,8 @@ entity led_matrix_fpga_top is
         Matrix_Addr : out std_logic_vector(4 downto 0);
         Matrix_CLK  : out std_logic;
         BLANK       : out std_logic;
-        LATCH       : out std_logic
+        LATCH       : out std_logic;
+        TP          : out std_logic_vector(7 downto 0)
     );
 end entity;
 
@@ -67,6 +68,7 @@ architecture rtl of led_matrix_fpga_top is
     component matrix_interface is
         port (
             CLK             : in  std_logic;
+            RSTn            : in  std_logic;
             LED_Data_RGB_lo : in  std_logic_vector(17 downto 0); -- 18 bit color
             LED_Data_RGB_hi : in  std_logic_vector(17 downto 0); -- 18 bit color
             LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64)
@@ -80,7 +82,8 @@ architecture rtl of led_matrix_fpga_top is
             Matrix_CLK      : out std_logic;
             BLANK           : out std_logic;
             LATCH           : out std_logic;
-            Next_Frame      : out std_logic
+            Next_Frame      : out std_logic;
+            TP              : out std_logic_vector(7 downto 0)
         );
     end component;
 
@@ -136,8 +139,9 @@ architecture rtl of led_matrix_fpga_top is
     signal LED_Data_RGB_lo  : std_logic_vector(17 downto 0); -- 18 bit color
     signal LED_Data_RGB_hi  : std_logic_vector(17 downto 0); -- 18 bit color
 
-    -- Register map
-    signal frame_status : std_logic_vector(15 downto 0); -- TBD contents
+    -- Reset
+    signal RSTn_counter    : std_logic_vector(15 downto 0) := (others => '0');
+    signal RSTn      : std_logic := '0';
 
 begin
 
@@ -238,6 +242,7 @@ begin
     u_matrix_if: matrix_interface
     port map (
         CLK             => CLK_100M,
+        RSTn            => RSTn,
         LED_Data_RGB_lo => LED_Data_RGB_lo,
         LED_Data_RGB_hi => LED_Data_RGB_hi,
         LED_RAM_Addr    => LED_Rd_Addr,
@@ -251,7 +256,16 @@ begin
         Matrix_CLK      => Matrix_CLK,
         BLANK           => BLANK,
         LATCH           => LATCH,
-        Next_Frame      => open
+        Next_Frame      => open,
+        TP              => TP
     );
+
+    p_reset_gen : process (CLK_100M)
+    begin
+        if rising_edge(CLK_100M) then
+            RSTn_counter   <= RSTn_counter(14 downto 0) & '1';
+            RSTn     <= RSTn_counter(15);
+        end if;
+    end process;
 
 end architecture;

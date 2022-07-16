@@ -13,6 +13,7 @@ library ieee;
 entity matrix_interface IS
     port (
         CLK             : in  std_logic;
+        RSTn            : in  std_logic;
         LED_Data_RGB_lo : in  std_logic_vector(17 downto 0); -- 18 bit color
         LED_Data_RGB_hi : in  std_logic_vector(17 downto 0); -- 18 bit color
         LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64)
@@ -26,7 +27,8 @@ entity matrix_interface IS
         Matrix_CLK      : out std_logic;
         BLANK           : out std_logic;
         LATCH           : out std_logic;
-        Next_Frame      : out std_logic
+        Next_Frame      : out std_logic;
+        TP              : out std_logic_vector(7 downto 0)
     );
 end matrix_interface;
 
@@ -35,6 +37,7 @@ architecture rtl of matrix_interface is
     component matrix_control_sm is
         port (
             CLK             : in  std_logic;
+            RSTn            : in  std_logic;
             CLK_Matrix      : in  std_logic;
             LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
             LED_RAM_Load    : out std_logic;
@@ -42,7 +45,8 @@ architecture rtl of matrix_interface is
             Shift_Data      : out std_logic;
             Blank           : out std_logic;
             Latch           : out std_logic;
-            RGB_bit_count   : out std_logic_vector(2 downto 0)
+            RGB_bit_count   : out std_logic_vector(2 downto 0);
+            TP              : out std_logic_vector(7 downto 0)
         );
     end component;
 
@@ -84,6 +88,7 @@ begin
     u_matrix_sm : matrix_control_sm
     port map (
         CLK             => CLK,
+        RSTn            => RSTn,
         CLK_Matrix      => CLK_Matrix,
         LED_RAM_Addr    => LED_RAM_Addr_int,
         LED_RAM_Load    => LED_RAM_Load,
@@ -91,7 +96,8 @@ begin
         Shift_Data      => Shift_Data,
         Blank           => BLANK,
         Latch           => LATCH_int,
-        RGB_bit_count   => RGB_bit_count
+        RGB_bit_count   => RGB_bit_count,
+        TP              => TP
     );
 
     p_load_data : process (CLK)
