@@ -1,19 +1,19 @@
 #--  Synopsys, Inc.
 #--  Version L-2016.09L+ice40
 #--  Project file C:\Users\Matt\Desktop\Hardware-Stuff\led_matrix\Opallios\Opallios_FPGA\Opallios_FPGA_syn.prj
-#--  Written on Fri Jul 15 19:38:30 2022
+#--  Written on Sat Jul 16 10:20:41 2022
 
 
 #project files
+add_file -vhdl -lib work "../src/hdl/matrix_interface.vhd"
+add_file -verilog "../src/hdl/gpmc-sync.v"
+add_file -vhdl -lib work "../src/hdl/led_matrix_fpga_top.vhd"
+add_file -vhdl -lib work "../src/hdl/dual_port_ram.vhd"
+add_file -vhdl -lib work "../src/hdl/matrix_control_sm.vhd"
+add_file -constraint "../src/constraints/opallios_timing.sdc"
 
 
 
-add_file -vhdl -lib work "../src/hdl/matrix_interface.vhd" 
-add_file -verilog -lib work "../src/hdl/gpmc-sync.v" 
-add_file -vhdl -lib work "../src/hdl/led_matrix_fpga_top.vhd" 
-add_file -vhdl -lib work "../src/hdl/dual_port_ram.vhd" 
-add_file -vhdl -lib work "../src/hdl/matrix_control_sm.vhd" 
-add_file -constraint -lib work "../src/constraints/opallios_timing.sdc"
 #implementation: "Opallios_FPGA_Implmnt"
 impl -add Opallios_FPGA_Implmnt -type fpga
 
@@ -27,7 +27,7 @@ set_option -project_relative_includes 1
 set_option -technology SBTiCE40
 set_option -part iCE40HX4K
 set_option -package TQ144
-set_option -speed_grade 
+set_option -speed_grade ""
 set_option -part_companion ""
 
 #compilation/mapping options
@@ -66,10 +66,12 @@ set_option -resource_sharing 1
 # Compiler Options
 set_option -auto_infer_blackbox 0
 
+# Compiler Options
+set_option -supporttypedflt 1
+
 #automatic place and route (vendor) options
 set_option -write_apr_constraint 1
 
 #set result format/file last
 project -result_file "Opallios_FPGA_Implmnt/Opallios_FPGA.edf"
-impl -active Opallios_FPGA_Implmnt
-project -run synthesis -clean
+impl -active "Opallios_FPGA_Implmnt"

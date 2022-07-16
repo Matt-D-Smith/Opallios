@@ -143,6 +143,9 @@ architecture rtl of led_matrix_fpga_top is
     signal RSTn_counter    : std_logic_vector(15 downto 0) := (others => '0');
     signal RSTn      : std_logic := '0';
 
+    attribute syn_preserve : boolean;
+    attribute syn_preserve of RSTn_counter : signal is true;
+
 begin
 
     --temporary output assignments
