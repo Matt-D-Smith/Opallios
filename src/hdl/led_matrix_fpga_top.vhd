@@ -146,6 +146,14 @@ architecture rtl of led_matrix_fpga_top is
     attribute syn_preserve : boolean;
     attribute syn_preserve of RSTn_counter : signal is true;
 
+    -- debug internal signals
+    signal R0_int : std_logic;
+    signal G0_int : std_logic;
+    signal B0_int : std_logic;
+    signal BLANK_int : std_logic;
+    signal LATCH_int : std_logic;
+    signal Matrix_CLK_int : std_logic;
+
 begin
 
     --temporary output assignments
@@ -249,18 +257,18 @@ begin
         LED_Data_RGB_lo => LED_Data_RGB_lo,
         LED_Data_RGB_hi => LED_Data_RGB_hi,
         LED_RAM_Addr    => LED_Rd_Addr,
-        R0              => R0,
-        G0              => G0,
-        B0              => B0,
+        R0              => R0_int,
+        G0              => G0_int,
+        B0              => B0_int,
         R1              => R1,
         G1              => G1,
         B1              => B1,
         Matrix_Addr     => Matrix_Addr,
-        Matrix_CLK      => Matrix_CLK,
-        BLANK           => BLANK,
-        LATCH           => LATCH,
+        Matrix_CLK      => Matrix_CLK_int,
+        BLANK           => BLANK_int,
+        LATCH           => LATCH_int,
         Next_Frame      => open,
-        TP              => TP
+        TP              => open
     );
 
     p_reset_gen : process (CLK_100M)
@@ -270,5 +278,21 @@ begin
             RSTn     <= RSTn_counter(15);
         end if;
     end process;
+
+    -- debug outputs
+    Matrix_CLK <= Matrix_CLK_int;
+    R0    <= R0_int;
+    G0    <= G0_int;
+    B0    <= B0_int;
+    BLANK <= BLANK_int;
+    LATCH <= LATCH_int;
+    TP(0) <= Matrix_CLK_int;
+    TP(1) <= R0_int;
+    TP(2) <= G0_int;
+    TP(3) <= B0_int;
+    TP(4) <= BLANK_int;
+    TP(5) <= LATCH_int;
+    TP(6) <= '0';
+    TP(7) <= '0';
 
 end architecture;

@@ -51,7 +51,7 @@ architecture rtl of matrix_interface is
     end component;
 
     signal CLK_matrix       : std_logic;
-    signal Clk_Div_Count    : unsigned(1 downto 0) := (others => '0'); --25 MHz
+    signal Clk_Div_Count    : unsigned(2 downto 0) := (others => '0'); -- 12.5 mhz for debugging, restore to 25mhz for actual -- 25 MHz
     signal LED_RAM_Load     : std_logic;
     signal LED_RAM_Load_d   : std_logic;
     signal LED_RAM_Load_q   : std_logic;
@@ -82,7 +82,7 @@ begin
             Clk_Div_Count <= Clk_Div_Count + 1;
         end if;
     end process;
-    CLK_Matrix <= Clk_Div_Count(1); --25 MHz internal use
+    CLK_Matrix <= Clk_Div_Count(2); -- 12.5 mhz for debugging, restore to 25mhz for actual -- 25 MHz internal use
     Matrix_CLK <= CLK_Matrix; -- output
 
     u_matrix_sm : matrix_control_sm
