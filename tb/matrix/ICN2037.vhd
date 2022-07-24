@@ -29,6 +29,7 @@ architecture arch of ICN2037 is
 
     signal sreg : std_logic_vector(15 downto 0);
     signal latch : std_logic_vector(15 downto 0);
+    signal reg2 : std_logic_vector(15 downto 0);
 
 begin
 
@@ -42,13 +43,20 @@ begin
 
     latch_proc : process (LE, sreg, latch)
     begin
+        latch <= latch;
         if LE = '1' then
             latch <= sreg;
-        else
-            latch <= latch;
         end if;
     end process latch_proc;
 
-    CCOUT_n <= NOT latch when OE_n = '0' else (others => '1') ;
+    OE_proc : process (OE_n)
+    begin
+        reg2 <= reg2;
+        if falling_edge(OE_n) then
+            reg2 <= latch;
+        end if;
+    end process OE_proc;
+
+    CCOUT_n <= NOT reg2 when OE_n = '0' else (others => '1') ;
 
 end arch;

@@ -242,15 +242,14 @@ begin
     gpmc_send('0',x"0000",x"0000");
 
     -- Write some data to the video memory
-    gpmc_send('1',x"2000",x"02AA");
-    gpmc_send('1',x"2001",x"0015");
-    gpmc_send('1',x"2002",x"0155");
-    gpmc_send('1',x"2003",x"002A");
-    gpmc_send('1',x"2004",x"00CC");
-    gpmc_send('1',x"2005",x"0033");
-    gpmc_send('1',x"2006",x"0333");
-    gpmc_send('1',x"2007",x"000C");
-
+    gpmc_send('1',x"2000",x"0FFF"); -- row 0 led 0
+    gpmc_send('1',x"2001",x"003F"); -- row 0 led 0
+    gpmc_send('1',x"2080",x"0FFF"); -- row 1 led 0
+    gpmc_send('1',x"2081",x"003F"); -- row 1 led 0
+    gpmc_send('1',x"20FE",x"0FFF"); -- row 1 led 63
+    gpmc_send('1',x"20FF",x"003F"); -- row 1 led 63
+    gpmc_send('1',x"2FFE",x"0FFF"); -- row 31 led 63
+    gpmc_send('1',x"2FFF",x"003F"); -- row 31 led 63
 
     wait;
     end process;

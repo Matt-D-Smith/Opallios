@@ -153,6 +153,7 @@ architecture rtl of led_matrix_fpga_top is
     signal BLANK_int : std_logic;
     signal LATCH_int : std_logic;
     signal Matrix_CLK_int : std_logic;
+    signal Matrix_if_TP :std_logic_vector(7 downto 0);
 
 begin
 
@@ -268,7 +269,7 @@ begin
         BLANK           => BLANK_int,
         LATCH           => LATCH_int,
         Next_Frame      => open,
-        TP              => open
+        TP              => TP
     );
 
     p_reset_gen : process (CLK_100M)
@@ -286,13 +287,13 @@ begin
     B0    <= B0_int;
     BLANK <= BLANK_int;
     LATCH <= LATCH_int;
-    TP(0) <= Matrix_CLK_int;
-    TP(1) <= R0_int;
-    TP(2) <= G0_int;
-    TP(3) <= B0_int;
-    TP(4) <= BLANK_int;
-    TP(5) <= LATCH_int;
-    TP(6) <= '0';
-    TP(7) <= '0';
+    -- TP(0) <= Matrix_CLK_int;
+    -- TP(1) <= R0_int;
+    -- TP(2) <= G0_int;
+    -- TP(3) <= B0_int;
+    -- TP(4) <= BLANK_int;
+    -- TP(5) <= LATCH_int;
+    -- TP(6) <= matrix_if_TP(6);
+    -- TP(7) <= matrix_if_TP(7);
 
 end architecture;

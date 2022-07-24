@@ -19,6 +19,8 @@ entity matrix_control_sm IS
         LED_RAM_Load    : out std_logic;
         Next_Frame      : out std_logic;
         Shift_Data      : out std_logic;
+        Shift_Data_Cntr : out std_logic_vector(5 downto 0);
+        Matrix_CLK_Gate : out std_logic;
         Blank           : out std_logic;
         Latch           : out std_logic;
         RGB_bit_count   : out std_logic_vector(2 downto 0);
@@ -32,12 +34,11 @@ architecture rtl of matrix_control_sm is
     signal Frame_Timer          : unsigned(26 downto 0) := (others => '0');
     signal RGB_bit_count_int    : unsigned(2 downto 0) := (others => '0');
 
-    type state_type is (Startup, Load_Row_RAM_Data, Shift_Data_Out, Latch_Data, wait_BCM);
-    signal state, next_state : state_type;
+    type state_type is (Startup, Load_Row_RAM_Data, Start_Shift_Data, Shift_Data_Out, Latch_Data, Output_Enable, wait_BCM);
+    signal state : state_type;
 
     attribute syn_encoding : string;
     attribute syn_encoding of state : signal is "safe";
-    attribute syn_encoding of next_state : signal is "safe";    
 
     signal ram_delay_cnt        : unsigned(7 downto 0) := (others => '0');
     signal rst_ram_delay_cnt    : std_logic;
@@ -50,6 +51,9 @@ architecture rtl of matrix_control_sm is
     signal incr_addr    : std_logic;
     signal col_addr     : unsigned(5 downto 0) := (others => '0');
     signal row_count    : unsigned(4 downto 0) := (others => '0');
+
+    signal Shift_Data_int : std_logic;
+    signal Shift_Data_Cntr_int : unsigned(5 downto 0);
 
     signal RSTn_Matrix : std_logic := '0';
 
@@ -116,11 +120,24 @@ begin
     LED_RAM_Addr <= std_logic_vector(row_count) & std_logic_vector(col_addr);
     LED_RAM_Load <= incr_addr;
 
+    p_shift_data_counter : process (CLK_Matrix)
+    begin
+        if RSTn_Matrix = '0' then
+            Shift_Data_Cntr_int <= (others => '0');
+        elsif rising_edge(CLK_Matrix) then
+            if Shift_Data_int = '1' then
+                Shift_Data_Cntr_int <= Shift_Data_Cntr_int + 1;
+            else 
+                Shift_Data_Cntr_int <= (others => '0');
+            end if; 
+        end if;
+    end process;
+    Shift_Data_Cntr <= std_logic_vector(Shift_Data_Cntr_int);
+
     p_next_state : process(CLK_Matrix, RSTn_Matrix)
     begin 
         if RSTn_Matrix = '0' then
             state <= Startup;
-            next_state <= Load_Row_RAM_Data;
             rst_ram_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
             RGB_bit_count_int <= (others => '0');
@@ -130,39 +147,40 @@ begin
             rst_ram_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
 
-            -- next state
-            state <= next_state;
-
             -- state machine
             case state is 
                 when Startup =>
-                    next_state <= Load_Row_RAM_Data;
+                    state <= Load_Row_RAM_Data;
                 when Load_Row_RAM_Data =>
-                    if ram_delay_cnt >= to_unsigned(127-4,ram_delay_cnt'length) then -- 128 CLK cycles (-4 as 1 Matrix_CLK delay to next state)
-                        next_state <= Shift_Data_Out;
+                    if ram_delay_cnt >= to_unsigned(127,ram_delay_cnt'length) then -- 128 CLK cycles
+                        state <= Start_Shift_Data;
                         rst_ram_delay_cnt <= '1';
                     end if;
+                when Start_Shift_Data =>
+                    state <= Shift_Data_Out;
                 when Shift_Data_Out =>  
-                    if matrix_delay_cnt = to_unsigned(63-1,matrix_delay_cnt'length) then -- -1 for next state delay
-                        next_state <= Latch_Data;
+                    if matrix_delay_cnt = to_unsigned(63,matrix_delay_cnt'length) then
+                        state <= Latch_Data;
                         rst_matrix_delay_cnt <= '1';
                     end if;
                 when Latch_Data =>  
-                    next_state <= wait_BCM;
+                    state <= Output_Enable;
+                when Output_Enable =>  
+                    state <= wait_BCM;
                 when wait_BCM =>  
-                    if matrix_delay_cnt = shift_left(to_unsigned(1,matrix_delay_cnt'length),to_integer(RGB_bit_count_int)+6)-63 then -- lsh +6 for 64x to make the 64 clock shift period the unity delay (approx)
+                    if matrix_delay_cnt = shift_left(to_unsigned(1,matrix_delay_cnt'length),to_integer(RGB_bit_count_int)+6)-63 then -- lsh +6 for 64x to make the 64 clock shift period the unit delay (approx)
                         if RGB_bit_count_int = to_unsigned(6,RGB_bit_count_int'length) then
-                            next_state <= Load_Row_RAM_Data;
+                            state <= Load_Row_RAM_Data;
                             RGB_bit_count_int <= (others => '0');
                             row_count <= row_count + 1;
                         else
-                            next_state <= Shift_Data_Out;
+                            state <= Start_Shift_Data;
                             RGB_bit_count_int <= RGB_bit_count_int + 1; -- roll back over when done
                         end if;
                         rst_matrix_delay_cnt <= '1';
                     end if;
                 when others =>
-                    next_state <= Load_Row_RAM_Data;
+                    state <= Load_Row_RAM_Data;
             end case; 
         end if;
     end process;
@@ -174,8 +192,9 @@ begin
         Blank <= '0';
         incr_addr <= '0';
         incr_ram_delay_cnt <= '0';
-        Shift_Data <= '0';
+        Shift_Data_int <= '0';
         incr_matrix_delay_cnt <= '0';
+        Matrix_CLK_Gate <= '0';
 
         -- state machine
         case state is 
@@ -183,11 +202,15 @@ begin
             when Load_Row_RAM_Data =>
                 incr_addr <= '1';
                 incr_ram_delay_cnt <= '1';
+            when Start_Shift_Data =>
+                Shift_Data_int <= '1'; 
             when Shift_Data_Out =>  
-                Shift_Data <= '1';
+                Shift_Data_int <= '1';
+                Matrix_CLK_Gate <= '1';
                 incr_matrix_delay_cnt <= '1';
             when Latch_Data =>  
                 Latch <= '1';
+            when Output_Enable =>  
                 Blank <= '1';
             when wait_BCM =>  
                 incr_matrix_delay_cnt <= '1';
@@ -196,6 +219,7 @@ begin
     end process;
 
     RGB_bit_count <= std_logic_vector(RGB_bit_count_int);
+    Shift_Data <= Shift_Data_int;
 
     -- debug
     TP(0) <= '1' when state = Startup else '0';
@@ -204,7 +228,7 @@ begin
     TP(3) <= '1' when state = Latch_Data else '0';
     TP(4) <= '1' when state = wait_BCM else '0';
     TP(5) <= CLK_Matrix;
-    TP(6) <= '0';
-    TP(7) <= '0';
+    TP(6) <= Shift_Data_int;
+    TP(7) <= incr_matrix_delay_cnt;
 
 end architecture;

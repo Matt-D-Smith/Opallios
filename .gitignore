@@ -9,3 +9,4 @@ sim/matrix/
 sim/work/
 sim/*.mti
 sim/*.wlf
+sim/wlf*
