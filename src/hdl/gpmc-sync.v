@@ -56,7 +56,7 @@ SB_IO # (
     .PACKAGE_PIN(gpmc_ad),
     .OUTPUT_ENABLE(!gpmc_csn1 && gpmc_advn && !gpmc_oen && gpmc_wen),
     .D_OUT_0(gpmc_data_out),
-    .D_OUT_1(),
+    .D_OUT_1(1'b0),
     .D_IN_0(gpmc_data_in),
     .D_IN_1(),
     .CLOCK_ENABLE(1'b0),

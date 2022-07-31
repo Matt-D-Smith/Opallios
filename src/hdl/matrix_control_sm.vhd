@@ -14,7 +14,8 @@ entity matrix_control_sm IS
     port (
         CLK             : in  std_logic;
         RSTn            : in  std_logic;
-        CLK_Matrix      : in  std_logic;
+        Matrix_CLK_re   : in  std_logic;
+        Matrix_CLK_fe   : in  std_logic;
         LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
         LED_RAM_Load    : out std_logic;
         Next_Frame      : out std_logic;
@@ -34,7 +35,7 @@ architecture rtl of matrix_control_sm is
     signal Frame_Timer          : unsigned(26 downto 0) := (others => '0');
     signal RGB_bit_count_int    : unsigned(2 downto 0) := (others => '0');
 
-    type state_type is (Startup, Load_Row_RAM_Data, Start_Shift_Data, Shift_Data_Out, Latch_Data, Output_Enable, wait_BCM);
+    type state_type is (Startup, Start_Load_Row_RAM_Data, Load_Row_RAM_Data, Start_Shift_Data, Shift_Data_Out, Latch_Data, Output_Enable, wait_BCM);
     signal state : state_type;
 
     attribute syn_encoding : string;
@@ -45,6 +46,7 @@ architecture rtl of matrix_control_sm is
     signal incr_ram_delay_cnt   : std_logic;
 
     signal matrix_delay_cnt         : unsigned(11 downto 0) := (others => '0'); -- max value = 64*2^6=4096 = 12 bit
+    signal matrix_delay_cnt_d         : unsigned(11 downto 0) := (others => '0'); -- max value = 64*2^6=4096 = 12 bit
     signal rst_matrix_delay_cnt     : std_logic;
     signal incr_matrix_delay_cnt    : std_logic;
 
@@ -55,16 +57,7 @@ architecture rtl of matrix_control_sm is
     signal Shift_Data_int : std_logic;
     signal Shift_Data_Cntr_int : unsigned(5 downto 0);
 
-    signal RSTn_Matrix : std_logic := '0';
-
 begin
-
-    p_matrix_rst_gen : process (CLK_Matrix)
-    begin
-        if rising_edge(CLK_Matrix) then
-            RSTn_Matrix <= RSTn;
-        end if;
-    end process;
 
     p_frame_timer : process (CLK, RSTn) -- independent of drawing the frame
     begin
@@ -81,11 +74,9 @@ begin
         end if;
     end process;
 
-    p_ram_delay_counter : process (CLK, RSTn) -- count for loading RAM into row data buffer
+    p_ram_delay_counter : process (CLK) -- count for loading RAM into row data buffer
     begin
-        if RSTn = '0' then
-            ram_delay_cnt <= (others => '0'); 
-        elsif rising_edge(CLK) then
+        if rising_edge(CLK) then
             if rst_ram_delay_cnt = '1' then 
                 ram_delay_cnt <= (others => '0'); 
             elsif incr_ram_delay_cnt = '1' then
@@ -94,15 +85,16 @@ begin
         end if;
     end process;
 
-    p_matrix_delay_counter : process (CLK_Matrix, RSTn_Matrix) -- count for state machine delays relative to matrix clk
+    p_matrix_delay_counter : process (CLK) -- count for state machine delays relative to matrix clk
     begin
-        if RSTn_Matrix = '0' then
-            matrix_delay_cnt <= (others => '0'); 
-        elsif rising_edge(CLK_Matrix) then
-            if rst_matrix_delay_cnt = '1' then 
-                matrix_delay_cnt <= (others => '0'); 
-            elsif incr_matrix_delay_cnt = '1' then
-                matrix_delay_cnt <= matrix_delay_cnt + 1;
+        if rising_edge(CLK) then
+            matrix_delay_cnt <= matrix_delay_cnt_d;
+            if (Matrix_CLK_re = '1') then
+                if rst_matrix_delay_cnt = '1' then 
+                    matrix_delay_cnt_d <= (others => '0'); 
+                elsif incr_matrix_delay_cnt = '1' then
+                    matrix_delay_cnt_d <= matrix_delay_cnt_d + 1;
+                end if;
             end if;
         end if;
     end process;
@@ -120,11 +112,11 @@ begin
     LED_RAM_Addr <= std_logic_vector(row_count) & std_logic_vector(col_addr);
     LED_RAM_Load <= incr_addr;
 
-    p_shift_data_counter : process (CLK_Matrix)
+    p_shift_data_counter : process (CLK, RSTn)
     begin
-        if RSTn_Matrix = '0' then
+        if RSTn = '0' then
             Shift_Data_Cntr_int <= (others => '0');
-        elsif rising_edge(CLK_Matrix) then
+        elsif rising_edge(CLK) and (Matrix_CLK_re = '1') then
             if Shift_Data_int = '1' then
                 Shift_Data_Cntr_int <= Shift_Data_Cntr_int + 1;
             else 
@@ -134,15 +126,15 @@ begin
     end process;
     Shift_Data_Cntr <= std_logic_vector(Shift_Data_Cntr_int);
 
-    p_next_state : process(CLK_Matrix, RSTn_Matrix)
+    p_next_state : process(CLK, RSTn)
     begin 
-        if RSTn_Matrix = '0' then
+        if RSTn = '0' then
             state <= Startup;
             rst_ram_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
             RGB_bit_count_int <= (others => '0');
             row_count <= (others => '0');
-        elsif rising_edge(CLK_Matrix) then
+        elsif rising_edge(CLK) and (Matrix_CLK_re = '1') then
             -- defaults
             rst_ram_delay_cnt <= '0';
             rst_matrix_delay_cnt <= '0';
@@ -151,10 +143,13 @@ begin
             case state is 
                 when Startup =>
                     state <= Load_Row_RAM_Data;
+                when Start_Load_Row_RAM_Data => -- dummy state to let counter reset
+                    state <= Load_Row_RAM_Data;
                 when Load_Row_RAM_Data =>
-                    if ram_delay_cnt >= to_unsigned(127,ram_delay_cnt'length) then -- 128 CLK cycles
+                    if matrix_delay_cnt = to_unsigned(31,matrix_delay_cnt'length) then -- 128 CLK cycles / 4 for matrix clk
                         state <= Start_Shift_Data;
                         rst_ram_delay_cnt <= '1';
+                        rst_matrix_delay_cnt <= '1';
                     end if;
                 when Start_Shift_Data =>
                     state <= Shift_Data_Out;
@@ -168,9 +163,9 @@ begin
                 when Output_Enable =>  
                     state <= wait_BCM;
                 when wait_BCM =>  
-                    if matrix_delay_cnt = shift_left(to_unsigned(1,matrix_delay_cnt'length),to_integer(RGB_bit_count_int)+6)-63 then -- lsh +6 for 64x to make the 64 clock shift period the unit delay (approx)
+                    if matrix_delay_cnt = shift_left(to_unsigned(64,matrix_delay_cnt'length),to_integer(RGB_bit_count_int))-63 then -- lsh +6 for 64x to make the 64 clock shift period the unit delay (approx)
                         if RGB_bit_count_int = to_unsigned(6,RGB_bit_count_int'length) then
-                            state <= Load_Row_RAM_Data;
+                            state <= Start_Load_Row_RAM_Data;
                             RGB_bit_count_int <= (others => '0');
                             row_count <= row_count + 1;
                         else
@@ -180,7 +175,7 @@ begin
                         rst_matrix_delay_cnt <= '1';
                     end if;
                 when others =>
-                    state <= Load_Row_RAM_Data;
+                    state <= Start_Load_Row_RAM_Data;
             end case; 
         end if;
     end process;
@@ -199,9 +194,11 @@ begin
         -- state machine
         case state is 
             when Startup =>
+            when Start_Load_Row_RAM_Data =>  -- dummy state to let counter reset
             when Load_Row_RAM_Data =>
                 incr_addr <= '1';
                 incr_ram_delay_cnt <= '1';
+                incr_matrix_delay_cnt <= '1';
             when Start_Shift_Data =>
                 Shift_Data_int <= '1'; 
             when Shift_Data_Out =>  
@@ -222,13 +219,14 @@ begin
     Shift_Data <= Shift_Data_int;
 
     -- debug
-    TP(0) <= '1' when state = Startup else '0';
-    TP(1) <= '1' when state = Load_Row_RAM_Data else '0';
-    TP(2) <= '1' when state = Shift_Data_Out else '0';
-    TP(3) <= '1' when state = Latch_Data else '0';
-    TP(4) <= '1' when state = wait_BCM else '0';
-    TP(5) <= CLK_Matrix;
-    TP(6) <= Shift_Data_int;
-    TP(7) <= incr_matrix_delay_cnt;
+    -- TP(0) <= '1' when state = Startup else '0';
+    -- TP(1) <= '1' when state = Load_Row_RAM_Data else '0';
+    -- TP(2) <= '1' when state = Shift_Data_Out else '0';
+    -- TP(3) <= '1' when state = Latch_Data else '0';
+    -- TP(4) <= '1' when state = wait_BCM else '0';
+    -- TP(5) <= Matrix_CLK_re;
+    -- TP(6) <= Shift_Data_int;
+    -- TP(7) <= incr_matrix_delay_cnt;
+    TP <= (others => '0');
 
 end architecture;

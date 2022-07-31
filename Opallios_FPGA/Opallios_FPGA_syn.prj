@@ -1,7 +1,7 @@
 #--  Synopsys, Inc.
 #--  Version L-2016.09L+ice40
 #--  Project file C:\Users\Matt\Desktop\Hardware-Stuff\led_matrix\Opallios\Opallios_FPGA\Opallios_FPGA_syn.prj
-#--  Written on Sat Jul 16 10:20:41 2022
+#--  Written on Sun Jul 24 19:42:12 2022
 
 
 #project files
@@ -48,7 +48,7 @@ set_option -maxfan 10000
 set_option -rw_check_on_ram 0
 set_option -disable_io_insertion 1
 set_option -pipe 1
-set_option -retiming 0
+set_option -retiming 1
 set_option -update_models_cp 0
 set_option -fix_gated_and_generated_clocks 1
 set_option -run_prop_extract 1
@@ -67,6 +67,7 @@ set_option -resource_sharing 1
 set_option -auto_infer_blackbox 0
 
 # Compiler Options
+set_option -vhdl2008 1
 set_option -supporttypedflt 1
 
 #automatic place and route (vendor) options

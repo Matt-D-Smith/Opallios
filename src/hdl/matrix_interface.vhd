@@ -38,7 +38,8 @@ architecture rtl of matrix_interface is
         port (
             CLK             : in  std_logic;
             RSTn            : in  std_logic;
-            CLK_Matrix      : in  std_logic;
+            Matrix_CLK_re   : in  std_logic;
+            Matrix_CLK_fe   : in  std_logic;
             LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
             LED_RAM_Load    : out std_logic;
             Next_Frame      : out std_logic;
@@ -52,9 +53,10 @@ architecture rtl of matrix_interface is
         );
     end component;
 
-    signal CLK_matrix       : std_logic;
     signal Matrix_CLK_Gate  : std_logic;
-    signal Clk_Div_Count    : unsigned(3 downto 0) := (others => '0'); -- 12.5 mhz for debugging, restore to 25mhz for actual -- 25 MHz
+    signal Matrix_CLK_re    : std_logic;
+    signal Matrix_CLK_fe    : std_logic;
+    signal Clk_Div_Count    : unsigned(1 downto 0) := (others => '0'); -- 25 MHz
     signal LED_RAM_Load     : std_logic;
     signal LED_RAM_Load_d   : std_logic;
     signal LED_RAM_Load_q   : std_logic;
@@ -76,6 +78,15 @@ architecture rtl of matrix_interface is
     signal R1_Data : std_logic_vector(63 downto 0);
     signal G1_Data : std_logic_vector(63 downto 0);
     signal B1_Data : std_logic_vector(63 downto 0);
+    signal LED_Data_R0 : std_logic_vector(5 downto 0);
+    signal LED_Data_G0 : std_logic_vector(5 downto 0);
+    signal LED_Data_B0 : std_logic_vector(5 downto 0);
+    signal LED_Data_R1 : std_logic_vector(5 downto 0);
+    signal LED_Data_G1 : std_logic_vector(5 downto 0);
+    signal LED_Data_B1 : std_logic_vector(5 downto 0);
+
+    attribute syn_isclock : boolean;
+    attribute syn_isclock of Matrix_CLK_fe: signal is true;
 
 begin
 
@@ -83,16 +94,25 @@ begin
     begin
         if rising_edge(CLK) then
             Clk_Div_Count <= Clk_Div_Count + 1;
+            Matrix_CLK_re <= '0';
+            Matrix_CLK_fe <= '0';
+            if Clk_Div_Count = "01" then
+                Matrix_CLK_re <= '1';
+                Matrix_CLK <= '1';
+            end if;
+            if Clk_Div_Count = "11" then
+                Matrix_CLK_fe <= '1';
+                Matrix_CLK <= '0';
+            end if;
         end if;
     end process;
-    CLK_Matrix <= Clk_Div_Count(3); -- 12.5 mhz for debugging, restore to 25mhz for actual -- 25 MHz internal use
-    Matrix_CLK <= CLK_Matrix when (Matrix_CLK_Gate = '1') else '0'; -- output
 
     u_matrix_sm : matrix_control_sm
     port map (
         CLK             => CLK,
         RSTn            => RSTn,
-        CLK_Matrix      => CLK_Matrix,
+        Matrix_CLK_re   => Matrix_CLK_re,
+        Matrix_CLK_fe   => Matrix_CLK_fe,
         LED_RAM_Addr    => LED_RAM_Addr_int,
         LED_RAM_Load    => LED_RAM_Load,
         Next_Frame      => Next_Frame,
@@ -105,6 +125,12 @@ begin
         TP              => TP
     );
 
+    LED_Data_R0 <= LED_Data_RGB_lo( 5 downto  0);
+    LED_Data_G0 <= LED_Data_RGB_lo(11 downto  6);
+    LED_Data_B0 <= LED_Data_RGB_lo(17 downto 12);
+    LED_Data_R1 <= LED_Data_RGB_hi( 5 downto  0);
+    LED_Data_G1 <= LED_Data_RGB_hi(11 downto  6);
+    LED_Data_B1 <= LED_Data_RGB_hi(17 downto 12);
     p_load_data : process (CLK)
     begin
         if rising_edge(CLK) then
@@ -113,12 +139,12 @@ begin
             LED_RAM_Load_d <= LED_RAM_Load; --delay by 2 clocks, 1 to read memory, 1 to register output data
             LED_RAM_Load_q <= LED_RAM_Load_d; --delay by 2 clocks, 1 to read memory, 1 to register output data
             if LED_RAM_Load_q = '1' then
-                R0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count)));
-                G0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count))+6);
-                B0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count))+12);
-                R1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count)));
-                G1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+6);
-                B1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_hi(to_integer(unsigned(RGB_bit_count))+12);
+                R0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_R0(to_integer(unsigned(RGB_bit_count)));
+                G0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_G0(to_integer(unsigned(RGB_bit_count)));
+                B0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_B0(to_integer(unsigned(RGB_bit_count)));
+                R1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_R1(to_integer(unsigned(RGB_bit_count)));
+                G1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_G1(to_integer(unsigned(RGB_bit_count)));
+                B1_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0)))) <= LED_Data_B1(to_integer(unsigned(RGB_bit_count)));
             end if;
 
             if Latch_int = '1' then
@@ -128,10 +154,10 @@ begin
     end process;
     Matrix_Addr <= Matrix_Addr_q;
 
-    p_shift_data : process (CLK_Matrix)
+    p_shift_data : process (CLK)
     begin
-        if falling_edge(CLK_Matrix) then
-            if Shift_Data = '1' then
+        if falling_edge(CLK) then
+            if (Matrix_CLK_fe = '1') and (Shift_Data = '1') then
                 R0 <= R0_Data(to_integer(unsigned(Shift_Data_Cntr)));
                 G0 <= G0_Data(to_integer(unsigned(Shift_Data_Cntr)));
                 B0 <= B0_Data(to_integer(unsigned(Shift_Data_Cntr)));
