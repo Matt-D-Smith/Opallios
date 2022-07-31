@@ -56,6 +56,7 @@ architecture rtl of matrix_interface is
     signal Matrix_CLK_Gate  : std_logic;
     signal Clk_Div_Count    : unsigned(3 downto 0) := (others => '0'); -- 12.5 mhz for debugging, restore to 25mhz for actual -- 25 MHz
     signal LED_RAM_Load     : std_logic;
+    signal LED_RAM_Load_d   : std_logic;
     signal LED_RAM_Load_q   : std_logic;
     signal RGB_bit_count    : std_logic_vector(2 downto 0) := (others => '0');
     signal Shift_Data       : std_logic;
@@ -109,7 +110,8 @@ begin
         if rising_edge(CLK) then
             Matrix_Addr_d <= Matrix_Addr_q;
             Matrix_Addr_q <= Matrix_Addr_d;
-            LED_RAM_Load_q <= LED_RAM_Load;
+            LED_RAM_Load_d <= LED_RAM_Load; --delay by 2 clocks, 1 to read memory, 1 to register output data
+            LED_RAM_Load_q <= LED_RAM_Load_d; --delay by 2 clocks, 1 to read memory, 1 to register output data
             if LED_RAM_Load_q = '1' then
                 R0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count)));
                 G0_Data(to_integer(unsigned(LED_RAM_Addr_int(5 downto 0))-1)) <= LED_Data_RGB_lo(to_integer(unsigned(RGB_bit_count))+6);

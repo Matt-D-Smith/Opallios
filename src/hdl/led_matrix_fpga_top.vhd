@@ -138,6 +138,8 @@ architecture rtl of led_matrix_fpga_top is
     signal LED_Wr_Data_RGB  : std_logic_vector(17 downto 0); -- 18 bit color
     signal LED_Data_RGB_lo  : std_logic_vector(17 downto 0); -- 18 bit color
     signal LED_Data_RGB_hi  : std_logic_vector(17 downto 0); -- 18 bit color
+    signal LED_Data_RGB_lo_q: std_logic_vector(17 downto 0); -- register ram data to help timing
+    signal LED_Data_RGB_hi_q: std_logic_vector(17 downto 0); -- register ram data to help timing
 
     -- Reset
     signal RSTn_counter    : std_logic_vector(15 downto 0) := (others => '0');
@@ -251,12 +253,23 @@ begin
         dout        => LED_Data_RGB_hi
     );
 
+    p_reg_RAM_Data : process (clk_100M, RSTn)
+    begin
+        if RSTn = '0' then
+            LED_Data_RGB_lo_q <= (others => '0'); 
+            LED_Data_RGB_hi_q <= (others => '0'); 
+        elsif rising_edge(clk_100M) then
+            LED_Data_RGB_lo_q  <= LED_Data_RGB_lo;
+            LED_Data_RGB_hi_q  <= LED_Data_RGB_hi;
+        end if;
+    end process;
+
     u_matrix_if: matrix_interface
     port map (
         CLK             => CLK_100M,
         RSTn            => RSTn,
-        LED_Data_RGB_lo => LED_Data_RGB_lo,
-        LED_Data_RGB_hi => LED_Data_RGB_hi,
+        LED_Data_RGB_lo => LED_Data_RGB_lo_q,
+        LED_Data_RGB_hi => LED_Data_RGB_hi_q,
         LED_RAM_Addr    => LED_Rd_Addr,
         R0              => R0_int,
         G0              => G0_int,
