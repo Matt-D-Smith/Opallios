@@ -18,8 +18,6 @@ entity matrix_control_sm IS
         Matrix_CLK_fe   : in  std_logic;
         LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
         Next_Frame      : out std_logic;
-        Shift_Data      : out std_logic;
-        Shift_Data_Cntr : out std_logic_vector(5 downto 0);
         Matrix_CLK_Gate : out std_logic;
         Blank           : out std_logic;
         Latch           : out std_logic;
@@ -35,7 +33,7 @@ architecture rtl of matrix_control_sm is
     signal RGB_bit_count_d      : unsigned(2 downto 0) := (others => '0');
     signal RGB_bit_count_q      : unsigned(2 downto 0) := (others => '0');
 
-    type state_type is (Startup, Start_Shift_Data, Shift_Data_Out, Latch_Data, Output_Enable, wait_BCM);
+    type state_type is (Startup, Start_Shift_Data, Shift_Data_Out, Stop_Shift_Data, Latch_Data, Output_Enable, wait_BCM);
     signal state : state_type;
 
     attribute syn_encoding : string;
@@ -49,9 +47,6 @@ architecture rtl of matrix_control_sm is
     signal incr_addr    : std_logic;
     signal col_addr     : unsigned(5 downto 0) := (others => '0');
     signal row_count    : unsigned(4 downto 0) := (others => '0');
-
-    signal Shift_Data_int : std_logic;
-    signal Shift_Data_Cntr_int : unsigned(5 downto 0);
 
 begin
 
@@ -101,22 +96,6 @@ begin
     end process;
     LED_RAM_Addr <= std_logic_vector(row_count) & std_logic_vector(col_addr);
 
-    p_shift_data_counter : process (CLK, RSTn)
-    begin
-        if RSTn = '0' then
-            Shift_Data_Cntr_int <= (others => '0');
-        elsif rising_edge(CLK) then
-            if (Matrix_CLK_re = '1') then
-                if Shift_Data_int = '1' then
-                    Shift_Data_Cntr_int <= Shift_Data_Cntr_int + 1;
-                else 
-                    Shift_Data_Cntr_int <= (others => '0');
-                end if; 
-            end if;
-        end if;
-    end process;
-    Shift_Data_Cntr <= std_logic_vector(Shift_Data_Cntr_int);
-
     p_next_state : process(CLK, RSTn)
     begin 
         if RSTn = '0' then
@@ -138,10 +117,12 @@ begin
                     when Start_Shift_Data =>
                         state <= Shift_Data_Out;
                     when Shift_Data_Out =>  
-                        if matrix_delay_cnt = to_unsigned(63,matrix_delay_cnt'length) then
-                            state <= Latch_Data;
+                        if matrix_delay_cnt = to_unsigned(62,matrix_delay_cnt'length) then
+                            state <= Stop_Shift_Data;
                             rst_matrix_delay_cnt <= '1';
                         end if;
+                    when Stop_Shift_Data =>
+                        state <= Latch_Data;
                     when Latch_Data =>  
                         state <= Output_Enable;
                     when Output_Enable =>  
@@ -171,7 +152,6 @@ begin
         Latch <= '0';
         Blank <= '0';
         incr_addr <= '0';
-        Shift_Data_int <= '0';
         incr_matrix_delay_cnt <= '0';
         Matrix_CLK_Gate <= '0';
 
@@ -179,13 +159,13 @@ begin
         case state is 
             when Startup =>
             when Start_Shift_Data =>
-                Shift_Data_int <= '1'; 
                 incr_addr <= '1';
             when Shift_Data_Out =>  
-                Shift_Data_int <= '1';
                 incr_addr <= '1';
                 Matrix_CLK_Gate <= '1';
                 incr_matrix_delay_cnt <= '1';
+            when Stop_Shift_Data =>  
+                Matrix_CLK_Gate <= '1';
             when Latch_Data =>  
                 Latch <= '1';
             when Output_Enable =>  
@@ -197,17 +177,8 @@ begin
     end process;
 
     RGB_bit_count <= std_logic_vector(RGB_bit_count_q);
-    Shift_Data <= Shift_Data_int;
 
     -- debug
-    -- TP(0) <= '1' when state = Startup else '0';
-    -- TP(1) <= '1' when state = Load_Row_RAM_Data else '0';
-    -- TP(2) <= '1' when state = Shift_Data_Out else '0';
-    -- TP(3) <= '1' when state = Latch_Data else '0';
-    -- TP(4) <= '1' when state = wait_BCM else '0';
-    -- TP(5) <= Matrix_CLK_re;
-    -- TP(6) <= Shift_Data_int;
-    -- TP(7) <= incr_matrix_delay_cnt;
     TP <= (others => '0');
 
 end architecture;

@@ -42,8 +42,6 @@ architecture rtl of matrix_interface is
             Matrix_CLK_fe   : in  std_logic;
             LED_RAM_Addr    : out std_logic_vector(10 downto 0); -- log2(64*64/2)
             Next_Frame      : out std_logic;
-            Shift_Data      : out std_logic;
-            Shift_Data_Cntr : out std_logic_vector(5 downto 0);
             Matrix_CLK_Gate : out std_logic;
             Blank           : out std_logic;
             Latch           : out std_logic;
@@ -57,8 +55,6 @@ architecture rtl of matrix_interface is
     signal Matrix_CLK_fe    : std_logic;
     signal Clk_Div_Count    : unsigned(1 downto 0) := (others => '0'); -- 25 MHz
     signal RGB_bit_count    : std_logic_vector(2 downto 0) := (others => '0');
-    signal Shift_Data       : std_logic;
-    signal Shift_Data_Cntr  : std_logic_vector(5 downto 0) := (others => '0');
     signal LED_RAM_Addr_int : std_logic_vector(LED_RAM_Addr'length-1 downto 0);
     signal Latch_int        : std_logic;
     signal Blank_int        : std_logic;
@@ -116,8 +112,6 @@ begin
         Matrix_CLK_fe   => Matrix_CLK_fe,
         LED_RAM_Addr    => LED_RAM_Addr_int,
         Next_Frame      => Next_Frame,
-        Shift_Data      => Shift_Data,
-        Shift_Data_Cntr => Shift_Data_Cntr,
         Matrix_CLK_Gate => Matrix_CLK_Gate,
         Blank           => Blank_int,
         Latch           => Latch_int,
