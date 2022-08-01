@@ -29,5 +29,5 @@ add wave -group {Matrix Sregs} Opallios_FPGA_tb/u_matrix/g_cols(2)/u_ICN2037_4/*
 
 # run sim
 # run 11 ms # 11ms for full speed, 22ms for halved debug speed
-run 15 ms 
+run 10 ms 
 wave zoom full
