@@ -11,6 +11,9 @@ library ieee;
     use ieee.numeric_std.all;
 
 entity led_matrix_fpga_top is
+    generic (
+        DEBUG : boolean := true
+    );
     port (
         -- BeagleWire signals
         clk_100M    : in  std_logic;
@@ -66,6 +69,9 @@ architecture rtl of led_matrix_fpga_top is
     end component;
 
     component matrix_interface is
+        generic (
+            DEBUG : boolean := false
+        );
         port (
             CLK             : in  std_logic;
             RSTn            : in  std_logic;
@@ -265,6 +271,9 @@ begin
     end process;
 
     u_matrix_if: matrix_interface
+    generic map (
+        DEBUG => DEBUG
+    )
     port map (
         CLK             => CLK_100M,
         RSTn            => RSTn,
@@ -282,7 +291,7 @@ begin
         BLANK           => BLANK_int,
         LATCH           => LATCH_int,
         Next_Frame      => open,
-        TP              => TP
+        TP              => open
     );
 
     p_reset_gen : process (CLK_100M)

@@ -18,6 +18,8 @@ end entity Opallios_FPGA_tb;
 
 architecture rtl of Opallios_FPGA_tb is
 
+    constant DEBUG : boolean := true;
+
     -- BeagleWire signals
     signal clk_100M    : std_logic;
     signal led         : std_logic_vector(3 downto 0);
@@ -49,6 +51,9 @@ architecture rtl of Opallios_FPGA_tb is
     constant GPMC_CLK_period : time := 10 ns;
 
     component led_matrix_fpga_top is
+        generic (
+            DEBUG : boolean := false
+        );
         port (
             -- BeagleWire signals
             clk_100M    : in  std_logic;
@@ -116,6 +121,9 @@ begin
     end process;
 
     DUT: led_matrix_fpga_top
+        generic map (
+            DEBUG => DEBUG
+        )
         port map (
             -- BeagleWire signals
             clk_100M    => clk_100M,

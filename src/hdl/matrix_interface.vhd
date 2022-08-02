@@ -11,6 +11,9 @@ library ieee;
     use ieee.numeric_std.all;
 
 entity matrix_interface IS
+    generic (
+        DEBUG : boolean := false
+    );
     port (
         CLK             : in  std_logic;
         RSTn            : in  std_logic;
@@ -50,10 +53,15 @@ architecture rtl of matrix_interface is
         );
     end component;
 
+    type t_CLK_Div_Length is array (boolean) of natural range 0 to 3;
+    constant CLK_Div_Length : t_CLK_Div_Length := (
+        true  => 3,
+        false => 2
+    );
+    signal Clk_Div_Count    : unsigned(CLK_Div_Length(DEBUG)-1 downto 0) := (others => '0'); -- 25 MHz in non-debug, 12.5MHz in debug
     signal Matrix_CLK_Gate  : std_logic;
     signal Matrix_CLK_re    : std_logic;
     signal Matrix_CLK_fe    : std_logic;
-    signal Clk_Div_Count    : unsigned(1 downto 0) := (others => '0'); -- 25 MHz
     signal RGB_bit_count    : std_logic_vector(2 downto 0) := (others => '0');
     signal LED_RAM_Addr_int : std_logic_vector(LED_RAM_Addr'length-1 downto 0);
     signal Latch_int        : std_logic;
@@ -81,28 +89,57 @@ architecture rtl of matrix_interface is
 
 begin
 
-    p_clk_div : process (CLK)
-    begin
-        if rising_edge(CLK) then
-            Clk_Div_Count <= Clk_Div_Count + 1;
-            Matrix_CLK_re <= '0';
-            Matrix_CLK_fe <= '0';
-            if Clk_Div_Count = "00" then -- 1 before 01 as 1 clk delay
-                Matrix_CLK_re <= '1';
-            end if;
-            if Clk_Div_Count = "10" then -- 1 before 11 as 1 clk delay
-                Matrix_CLK_fe <= '1';
-            end if;
-            if Matrix_CLK_Gate = '1' then
-                if Clk_Div_Count = "01" then -- 1 before 01 as 1 clk delay
-                    Matrix_CLK <= '1';
+    g_clk_div : if DEBUG = true generate
+
+        p_clk_div : process (CLK)
+        begin
+            if rising_edge(CLK) then
+                Clk_Div_Count <= Clk_Div_Count + 1;
+                Matrix_CLK_re <= '0';
+                Matrix_CLK_fe <= '0';
+                if Clk_Div_Count = "010" then -- 1 before 011 as 1 clk delay
+                    Matrix_CLK_re <= '1';
+                end if;
+                if Clk_Div_Count = "110" then -- 1 before 111 as 1 clk delay
+                    Matrix_CLK_fe <= '1';
+                end if;
+                if Matrix_CLK_Gate = '1' then
+                    if Clk_Div_Count = "011" then
+                        Matrix_CLK <= '1';
+                    end if;
+                end if;
+                if Clk_Div_Count = "111" then
+                    Matrix_CLK <= '0';
                 end if;
             end if;
-            if Clk_Div_Count = "11" then
-                Matrix_CLK <= '0';
+        end process;
+
+    else generate
+
+        p_clk_div : process (CLK)
+        begin
+            if rising_edge(CLK) then
+                Clk_Div_Count <= Clk_Div_Count + 1;
+                Matrix_CLK_re <= '0';
+                Matrix_CLK_fe <= '0';
+                if Clk_Div_Count = "00" then -- 1 before 01 as 1 clk delay
+                    Matrix_CLK_re <= '1';
+                end if;
+                if Clk_Div_Count = "10" then -- 1 before 11 as 1 clk delay
+                    Matrix_CLK_fe <= '1';
+                end if;
+                if Matrix_CLK_Gate = '1' then
+                    if Clk_Div_Count = "01" then
+                        Matrix_CLK <= '1';
+                    end if;
+                end if;
+                if Clk_Div_Count = "11" then
+                    Matrix_CLK <= '0';
+                end if;
             end if;
-        end if;
-    end process;
+        end process;
+        
+    end generate;
 
     u_matrix_sm : matrix_control_sm
     port map (
