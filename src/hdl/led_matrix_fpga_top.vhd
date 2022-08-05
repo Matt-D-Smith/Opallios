@@ -222,7 +222,7 @@ begin
         if rising_edge(clk_100M) then
             LED_Data_RG_Q <= LED_Data_RG_D;
             if ((we_matrix_buf = '1') and (gpmc_addr(0) = '0')) then
-                LED_Data_RG_D <= data_wr(11 downto 0);
+                LED_Data_RG_D <= data_wr(13 downto 8) & data_wr(5 downto 0); -- divide R and G to lower and upper byte
             end if;
         end if;
     end process;
@@ -259,17 +259,6 @@ begin
         dout        => LED_Data_RGB_hi
     );
 
-    p_reg_RAM_Data : process (clk_100M, RSTn)
-    begin
-        if RSTn = '0' then
-            LED_Data_RGB_lo_q <= (others => '0'); 
-            LED_Data_RGB_hi_q <= (others => '0'); 
-        elsif rising_edge(clk_100M) then
-            LED_Data_RGB_lo_q  <= LED_Data_RGB_lo;
-            LED_Data_RGB_hi_q  <= LED_Data_RGB_hi;
-        end if;
-    end process;
-
     u_matrix_if: matrix_interface
     generic map (
         DEBUG => DEBUG
@@ -277,8 +266,8 @@ begin
     port map (
         CLK             => CLK_100M,
         RSTn            => RSTn,
-        LED_Data_RGB_lo => LED_Data_RGB_lo_q,
-        LED_Data_RGB_hi => LED_Data_RGB_hi_q,
+        LED_Data_RGB_lo => LED_Data_RGB_lo,
+        LED_Data_RGB_hi => LED_Data_RGB_hi,
         LED_RAM_Addr    => LED_Rd_Addr,
         R0              => R0_int,
         G0              => G0_int,
@@ -309,13 +298,19 @@ begin
     B0    <= B0_int;
     BLANK <= BLANK_int;
     LATCH <= LATCH_int;
-    -- TP(0) <= Matrix_CLK_int;
-    -- TP(1) <= R0_int;
-    -- TP(2) <= G0_int;
-    -- TP(3) <= B0_int;
-    -- TP(4) <= BLANK_int;
-    -- TP(5) <= LATCH_int;
-    -- TP(6) <= matrix_if_TP(6);
-    -- TP(7) <= matrix_if_TP(7);
+
+    P_tp_reg : process (CLK_100M)
+    begin
+        if rising_edge(CLK_100M) then
+            TP(0) <= Matrix_CLK_int;
+            TP(1) <= R0_int;
+            TP(2) <= G0_int;
+            TP(3) <= B0_int;
+            TP(4) <= BLANK_int;
+            TP(5) <= LATCH_int;
+            TP(6) <= matrix_if_TP(6);
+            TP(7) <= matrix_if_TP(7);
+        end if;
+    end process;
 
 end architecture;

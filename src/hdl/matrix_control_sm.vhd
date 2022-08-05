@@ -160,12 +160,12 @@ begin
             when Startup =>
             when Start_Shift_Data =>
                 incr_addr <= '1';
+                Matrix_CLK_Gate <= '1';
             when Shift_Data_Out =>  
                 incr_addr <= '1';
                 Matrix_CLK_Gate <= '1';
                 incr_matrix_delay_cnt <= '1';
             when Stop_Shift_Data =>  
-                Matrix_CLK_Gate <= '1';
             when Latch_Data =>  
                 Latch <= '1';
             when Output_Enable =>  
