@@ -10,3 +10,11 @@ sim/work/
 sim/*.mti
 sim/*.wlf
 sim/wlf*
+
+# Compiled SW files
+.*.d
+*.o
+main
+memmap
+sdram
+i2c
