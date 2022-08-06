@@ -53,9 +53,9 @@ architecture rtl of matrix_interface is
         );
     end component;
 
-    type t_CLK_Div_Length is array (boolean) of natural range 0 to 4;
+    type t_CLK_Div_Length is array (boolean) of natural range 0 to 3;
     constant CLK_Div_Length : t_CLK_Div_Length := (
-        true  => 4,
+        true  => 3,
         false => 2
     );
     signal Clk_Div_Count    : unsigned(CLK_Div_Length(DEBUG)-1 downto 0) := (others => '0'); -- 25 MHz in non-debug, 12.5MHz in debug
@@ -84,8 +84,7 @@ architecture rtl of matrix_interface is
     signal LED_Data_G1 : std_logic_vector(5 downto 0);
     signal LED_Data_B1 : std_logic_vector(5 downto 0);
 
-    attribute syn_isclock : boolean;
-    attribute syn_isclock of Matrix_CLK_fe: signal is true;
+    signal TP_SM : std_logic_vector(7 downto 0);
 
 begin
 
@@ -97,18 +96,18 @@ begin
                 Clk_Div_Count <= Clk_Div_Count + 1;
                 Matrix_CLK_re <= '0';
                 Matrix_CLK_fe <= '0';
-                if Clk_Div_Count = "0110" then -- 1 before 011 as 1 clk delay
+                if Clk_Div_Count = "010" then -- 1 before 011 as 1 clk delay
                     Matrix_CLK_re <= '1';
                 end if;
-                if Clk_Div_Count = "1110" then -- 1 before 111 as 1 clk delay
+                if Clk_Div_Count = "110" then -- 1 before 111 as 1 clk delay
                     Matrix_CLK_fe <= '1';
                 end if;
                 if Matrix_CLK_Gate = '1' then
-                    if Clk_Div_Count = "0111" then
+                    if Clk_Div_Count = "011" then
                         Matrix_CLK <= '1';
                     end if;
                 end if;
-                if Clk_Div_Count = "1111" then
+                if Clk_Div_Count = "111" then
                     Matrix_CLK <= '0';
                 end if;
             end if;
@@ -153,7 +152,7 @@ begin
         Blank           => Blank_int,
         Latch           => Latch_int,
         RGB_bit_count   => RGB_bit_count,
-        TP              => TP
+        TP              => TP_SM
     );
 
     LED_Data_R0 <= LED_Data_RGB_lo( 5 downto  0);
@@ -172,12 +171,16 @@ begin
             R1 <= LED_Data_R1(to_integer(unsigned(RGB_bit_count)));
             G1 <= LED_Data_G1(to_integer(unsigned(RGB_bit_count)));
             B1 <= LED_Data_B1(to_integer(unsigned(RGB_bit_count)));
-            Matrix_Addr <= LED_RAM_Addr_int(10 downto 6);
             LATCH <= Latch_int;
             BLANK <= Blank_int;
+            if Blank_int = '1' then
+                Matrix_Addr <= LED_RAM_Addr_int(10 downto 6);
+                TP(4 downto 0) <= LED_RAM_Addr_int(10 downto 6);
+            end if;
         end if;
     end process;
 
     LED_RAM_Addr <= LED_RAM_Addr_int;
+    TP(7 downto 5) <= TP_SM(2 downto 0);
 
 end architecture;

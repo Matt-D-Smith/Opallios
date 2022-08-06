@@ -12,7 +12,7 @@ library ieee;
 
 entity led_matrix_fpga_top is
     generic (
-        DEBUG : boolean := true
+        DEBUG : boolean := false
     );
     port (
         -- BeagleWire signals
@@ -214,8 +214,8 @@ begin
 
     LED_Wr_Addr <= gpmc_addr(11 downto 1); -- divide by 2 to map 8192 to 4096
     we_matrix_buf <= we when (gpmc_addr >= S_MATRIX_ADDR) and (gpmc_addr <= E_MATRIX_ADDR) else '0';
-    we_matrix_lo <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(11) = '0') else '0'; -- only enable we when writing to the blue data reg, lo regs
-    we_matrix_hi <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(11) = '1') else '0'; -- only enable we when writing to the blue data reg, hi regs
+    we_matrix_lo <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(12) = '0') else '0'; -- only enable we when writing to the blue data reg, lo regs
+    we_matrix_hi <= we_matrix_buf when (gpmc_addr(0) = '1') and (gpmc_addr(12) = '1') else '0'; -- only enable we when writing to the blue data reg, hi regs
 
     p_RG_reg: process (clk_100M)
     begin
@@ -280,7 +280,7 @@ begin
         BLANK           => BLANK_int,
         LATCH           => LATCH_int,
         Next_Frame      => open,
-        TP              => open
+        TP              => matrix_if_TP
     );
 
     p_reset_gen : process (CLK_100M)
@@ -302,14 +302,18 @@ begin
     P_tp_reg : process (CLK_100M)
     begin
         if rising_edge(CLK_100M) then
-            TP(0) <= Matrix_CLK_int;
-            TP(1) <= R0_int;
-            TP(2) <= G0_int;
-            TP(3) <= B0_int;
-            TP(4) <= BLANK_int;
-            TP(5) <= LATCH_int;
-            TP(6) <= matrix_if_TP(6);
-            TP(7) <= matrix_if_TP(7);
+            -- TP(0) <= Matrix_CLK_int;
+            -- TP(1) <= R0_int;
+            -- TP(2) <= G0_int;
+            -- TP(3) <= B0_int;
+            -- TP(4) <= BLANK_int;
+            -- TP(5) <= LATCH_int;
+            -- TP(6) <= matrix_if_TP(6);
+            -- TP(7) <= matrix_if_TP(7);
+            TP(4 downto 0) <= matrix_if_TP(4 downto 0);
+            TP(5) <= BLANK_int;
+            TP(6) <= LATCH_int;
+            TP(7) <= '0';
         end if;
     end process;
 

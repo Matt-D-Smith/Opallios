@@ -53,8 +53,8 @@ set_io LATCH 129 # PMOD3 B4 8
 
 set_io Matrix_Addr[0] 4  # PMOD4 A1 1
 set_io Matrix_Addr[1] 7  # PMOD4 B1 2
-set_io Matrix_Addr[2] 9  # PMOD4 B2 4
-set_io Matrix_Addr[3] 8  # PMOD4 A2 3
+set_io Matrix_Addr[2] 8  # PMOD4 A2 3
+set_io Matrix_Addr[3] 9  # PMOD4 B2 4
 set_io Matrix_Addr[4] 10 # PMOD4 A3 5
 # set_io pmod4[2] 15 # PMOD4 B3 6
 # set_io pmod4[7] 11 # PMOD4 A4 7
