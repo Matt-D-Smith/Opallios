@@ -4,14 +4,14 @@ CC = $(CROSS)gcc
 PWD := $(shell pwd)
 
 CFLAGS = \
-        -std=c99 \
+	-std=c99 \
 	-g \
 	-O3 \
-        -W \
-        -Wall \
-        -Wextra \
+	-W \
+	-Wall \
+	-Wextra \
 	-Wp,-MMD,$(dir $@).$(notdir $@).d \
-        -Wp,-MT,$@ \
+	-Wp,-MT,$@ \
 
 bins-y += sdram
 bins-y += memmap
@@ -24,7 +24,7 @@ $(bins-y):
 
 sdram: sdram.o bw_bridge.o
 memmap: memmap.o bw_bridge.o
-opallios: opallios.o bw_bridge.o
+opallios: opallios.o bw_bridge.o /usr/local/lib/libraylib.so
 
 clean:
 	$(RM) *.o *~ $(bins-y)

@@ -14,7 +14,6 @@ sim/wlf*
 # Compiled SW files
 .*.d
 *.o
-main
-memmap
-sdram
-i2c
+sw/bridge_lib/memmap
+sw/bridge_lib/sdram
+sw/bridge_lib/opallios
