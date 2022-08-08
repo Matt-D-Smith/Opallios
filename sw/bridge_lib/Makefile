@@ -4,7 +4,7 @@ CC = $(CROSS)gcc
 PWD := $(shell pwd)
 
 CFLAGS = \
-	-std=c99 \
+	-std=c11 \
 	-g \
 	-O3 \
 	-W \
@@ -20,11 +20,11 @@ bins-y += opallios
 all: $(bins-y)
 
 $(bins-y):
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -lGLESv2 -lEGL -ldrm -lgbm -lpthread -lrt -lm -ldl
 
 sdram: sdram.o bw_bridge.o
 memmap: memmap.o bw_bridge.o
-opallios: opallios.o bw_bridge.o /usr/local/lib/libraylib.so
+opallios: opallios.o bw_bridge.o libraylib.a
 
 clean:
 	$(RM) *.o *~ $(bins-y)
