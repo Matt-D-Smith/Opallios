@@ -166,17 +166,74 @@ sudo ./memmap -a 0 -w 1234  # Write
 sudo ./memmap -a 0          # Read
 ```
 
+## Setting up Beaglebone
+
+Download image:
+
+Refer to the [BeagleWire Setup Guide](https://beaglewire.github.io/Blogs/Getting_BBB_Ready_for_BeagleWire.html#getting-bbb-ready-for-beaglewire) for this section.
+
+Follow BW setup guide step 1 to get image onto SD card.
+
+Set static IP with connmanctl
+```
+connmanctl services
+sudo connmanctl config <service> --ipv4 manual <ip_addr> <netmask> <gateway> --nameservers <dns_servers>
+```
+
+Change hostname
+```
+sudo hostname opallios
+```
+Change the old hostname to "opallios" in /etc/hostname and /etc/hosts. Reboot.
+
+Follow step 2 of BW setup guide to update kernel and SW packages
+
+Expand root partition to full SD card
+```
+sudo apt install parted -y
+sudo parted
+print all
+select /dev/mmcblk0
+resizepart 1 30.9G
+quit
+sudo resize2fs /dev/mmcblk0p1
+df -h
+```
+
+Configure git 
+```
+git config --global user.name "Your Name"
+git config --global user.email you@example.com
+```
+
+Follow BW setup steps 3-6. Do not check out beaglewire repo to testing. Note uEnv.txt is found in /boot/
+
+Clone Opallios repo
+```
+git clone https://github.com/Matt-D-Smith/Opallios.git
+```
+
+Install needed libraries
+```
+sudo apt install libasound2-dev mesa-common-dev libx11-dev libxrandr-dev libxi-dev xorg-dev libgl1-mesa-dev libglu1-mesa-dev libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
+```
+
+Clone, build, and install raylib
+```
+sudo apt install cmake
+git clone https://github.com/raysan5/raylib.git
+cd raylib
+git checkout 4.2.0
+cd src
+make PLATFORM=PLATFORM_DRM
+sudo make install
+```
+
 ---
 Development notes
 ---
-when GPMC write to any in range of LED frame data, grab both data and address, and forward to custom shaped 4096 * 18 ram. decode from there using LSB of address whether it is RG or B data. Separate register space and RAM space, do 2 different decodings for these.
 
 figure out how to do block writes on GPMC
-
-make IO block and constraints
-may need async_reg or false path from GPMC clock domain to 100M clock domain
-
-select a accelerometer/gyro
 
 
 ## Parts List
