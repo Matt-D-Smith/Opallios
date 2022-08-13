@@ -11,9 +11,19 @@ sim/*.mti
 sim/*.wlf
 sim/wlf*
 
-# Compiled SW files
+# Compiled mem bridge SW files
 .*.d
 *.o
 sw/bridge_lib/memmap
 sw/bridge_lib/sdram
 sw/bridge_lib/opallios
+
+# Compiled programming SW files
+sw/load_fw/.fpga-load.ko.cmd
+sw/load_fw/.fpga-load.mod.o.cmd
+sw/load_fw/.fpga-load.o.cmd
+sw/load_fw/.tmp_versions/
+sw/load_fw/Module.symvers
+sw/load_fw/fpga-load.ko
+sw/load_fw/fpga-load.mod.c
+sw/load_fw/modules.order
