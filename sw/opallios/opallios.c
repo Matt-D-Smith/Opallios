@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	}
 
 	int currentFrame = 0;
-	int numPixels = img.width * img.height;
+	int numPixels = 4096;
 
 	printf("Number of Frames: %d\n", numFrames);
 

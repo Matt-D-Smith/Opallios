@@ -16,7 +16,11 @@ sim/wlf*
 *.o
 sw/bridge_lib/memmap
 sw/bridge_lib/sdram
-sw/bridge_lib/opallios
+
+# Compiled LED interface SW files
+sw/opallios/opallios
+sw/opallios/opalliosgpu
+sw/opallios/triangle
 
 # Compiled programming SW files
 sw/load_fw/.fpga-load.ko.cmd
