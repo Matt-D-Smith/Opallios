@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
 		
 		for (int i = 0; i < numPixels; i++)
 		{
-			(matrixData)[i*2] = (((uint8_t *)img.data)[i*4+1+currentFrame*numPixels*4] >> 2) << 8 | (((uint8_t *)img.data)[i*4+currentFrame*numPixels*4] >> 2);
-			(matrixData)[i*2+1] = (((uint8_t *)img.data)[i*4+2+currentFrame*numPixels*4] >> 2);
+			(matrixData)[i*2] = (((uint8_t *)img.data)[i*4+1+currentFrame*numPixels*4]) << 8 | (((uint8_t *)img.data)[i*4+currentFrame*numPixels*4]);
+			(matrixData)[i*2+1] = (((uint8_t *)img.data)[i*4+2+currentFrame*numPixels*4]);
 		}
 		currentFrame++;
 		if (currentFrame >= numFrames) currentFrame = 0;

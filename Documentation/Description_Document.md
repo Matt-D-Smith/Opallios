@@ -44,7 +44,7 @@ This project is to make a decorative RGB LED display. This will use a HUB75 inte
 
 3mm LED pitch, 192mmx192mm total size, 64x64 RGB LEDs.
 
-1/32 scan on a 64x64 grid array *probably* means that 2 rows of 64 are lit up at a time, indicates 2x 5-bit decoders for row decoding.
+1/32 scan on a 64x64 grid array means that 2 rows of 64 are lit up at a time, indicates 2x 5-bit decoders for row decoding.
 
 ## Power consumption:  
 
@@ -92,7 +92,7 @@ From 100MHz clock, will target 25MHz (divide by 4). Can go higher, but for anyth
 ### LED Matrix Frame Rate
 
 At 25MHz, clock period is 20ns.  
-The LED matrix functions as 2 separate halves, having 2 channels of rgb input data, and 2 rows of LEDs get illuminated at a time. Therefore for time calculations we can treat it as a 64x32 module.
+The LED matrix functions as 2 semi-separate halves, having 2 channels of rgb input data, and 2 rows of LEDs get illuminated at a time. Therefore for time calculations we can treat it as a 64x32 module.
 
 Because the LEDs are only on or off, I will be using binary coded modulation (BCM) to dim the brightness for the different values of our color.
 
@@ -126,14 +126,7 @@ To deal with these nasty refresh rate periods, there will be a frame rate timer 
 
 GPMC runs at 100MHz, so 10 ns clock period. GPMC has a 16-bit data bus, so assume one 16-bit register gets loaded in 1 clock cycle, and we are doing a continuous block write, so there should only be one start block of overhead.
 
-If tight packing is used, the 18 bytes of data are transferred in repeating blocks of 9 16-bit register writes, containing 8 sets of 18-bit LED RGB data. With this method, the full 73728 bit array data is sent in 512 blocks of 16 * 9 = 144 bits.  
-
-64 * 64 * 18 bits/LED = 73728 bits  
-73728/16 = 4608 clocks = 46080 ns  
-
-![Tight packed RGB data](./include/tight-packed-GPMC-data.png)
-
-With loose packing, the 18 bit RGB data will be broken into register pairs, one containing R and G data, and the other containing B data. this transfers the 18 bits in 2 16 bit register writes, so the transfer time would be.  
+The RGB data will be broken into a pair of registers per LED, with red and green data in one, and blue in the other. The 6 bits will be filled into the upper 6 lsb of 8 bit blocks, such that standard 8 bit per color RGB data can be written, with the 2 LSBs of each color ignored. This transfers the 18 bits in 2 16 bit register writes, so the transfer time would be.  
 
 64 * 64 LEDS * 2 clocks per LED = 8192 clocks = 81920 ns
 
@@ -148,6 +141,8 @@ The total minimum frame time is 5652480 ns, divide by 32 to get one row = 176640
 - once row 31 and 63 are being drawn, signal in a register to start loading in the next frame for all addresses except those for rows 31 and 63
 - finish drawing rows 31 and 63, start rows 0 & 32, flag this in a register
 - load in color data for rows 31 and 63
+
+Alternately, if the draw speed is sufficiently fast the eye wont notice the frame tearing or blended colors from writing in the middle of a frame, it doesn't matter.
 
 There is a 32MB SDRAM on the board, I can use this to either achieve 24 bit color, or double buffer the frames. I probably still need sync registers to only write here at certain times.
 
@@ -213,9 +208,18 @@ Clone Opallios repo
 git clone https://github.com/Matt-D-Smith/Opallios.git
 ```
 
-Install needed libraries
+Install needed libraries and gpu driver ## nah
 ```
-sudo apt install libasound2-dev mesa-common-dev libx11-dev libxrandr-dev libxi-dev xorg-dev libgl1-mesa-dev libglu1-mesa-dev libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
+#sudo apt install libasound2-dev mesa-common-dev libx11-dev libxrandr-dev libxi-dev xorg-dev libgl1-mesa-dev libglu1-mesa-dev libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
+#possibly needed
+sudo apt install ti-sgx-ti335x-modules-4.9.59-ti-rt-r73
+```
+
+
+Install needed libraries and gpu driver ## good
+```
+sudo apt install libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
+
 ```
 
 Clone, build, and install raylib
@@ -227,6 +231,47 @@ git checkout 4.2.0
 cd src
 make PLATFORM=PLATFORM_DRM
 sudo make install
+```
+
+To set up C debugging
+```
+sudo apt install gdb
+```
+
+
+
+create a file in /home/debian named `gdb`. Inside it put:
+```
+sudo /usr/bin/gdb "$@"
+```
+Direct the debugger miDebuggerPath in launch.json to this file.
+
+Allow gdb to run without a sudo password
+```
+sudo visudo
+# At the bottom of this file add
+sk ALL=NOPASSWD:/usr/bin/gdb
+```
+
+Raylib requires a display to create an OpenGL context, so... FIGURE THIS PART OUT STILL ITS NOT WORKING
+
+Raylib doesnt want to create a window without a window manager. I installed LXQT to set up X11 and associated requirements
+```
+sudo apt install lxqt-core lxqt-core task-lxqt-desktop
+```
+
+Add the following in `/etc/X11/xorg.conf` under the "Screen" section -- ACTUALLY DO THE NEXT THING INSTEAD
+```
+SubSection     "Display"
+    Virtual     1920 1080
+EndSubSection
+```
+
+To do software rendering with X server - does not use gpu
+```
+apt-get install xvfb
+Xvfb -shmem -screen 0 1280x1024x24 & export DISPLAY=:0 &
+export DISPLAY=:0
 ```
 
 ---

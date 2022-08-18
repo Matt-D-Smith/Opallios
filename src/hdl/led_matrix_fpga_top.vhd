@@ -222,12 +222,12 @@ begin
         if rising_edge(clk_100M) then
             LED_Data_RG_Q <= LED_Data_RG_D;
             if ((we_matrix_buf = '1') and (gpmc_addr(0) = '0')) then
-                LED_Data_RG_D <= data_wr(13 downto 8) & data_wr(5 downto 0); -- divide R and G to lower and upper byte
+                LED_Data_RG_D <= data_wr(15 downto 10) & data_wr(7 downto 2); -- divide R and G to lower and upper byte
             end if;
         end if;
     end process;
 
-    LED_Wr_Data_RGB <= data_wr(5 downto 0) & LED_Data_RG_Q;
+    LED_Wr_Data_RGB <= data_wr(7 downto 2) & LED_Data_RG_Q;
 
     u_matrix_ram_lo : dual_port_ram -- store lower address data
     generic map (
