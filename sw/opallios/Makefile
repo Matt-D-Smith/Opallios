@@ -14,17 +14,13 @@ CFLAGS = \
 	-Wp,-MT,$@ \
 
 bins-y += opallios
-bins-y += opalliosgpu
-bins-y += triangle
 
 all: $(bins-y)
 
 $(bins-y):
-	$(CC) -o $@ $^ -lGLESv2 -lEGL -ldrm -lgbm -lpthread -lrt -lm -ldl -lglfw
+	$(CC) -o $@ $^ -lGLESv2 -lEGL -ldrm -lgbm -lpthread -lrt -lm -ldl
 
-opallios: opallios.o bw_bridge.o libraylib.a
-opalliosgpu: opalliosgpu.o bw_bridge.o libraylib.a
-triangle: triangle.o bw_bridge.o
+opallios: opallios.o ../bridge_lib/bw_bridge.o libraylib.a
 
 clean:
 	$(RM) *.o *~ $(bins-y)
