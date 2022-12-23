@@ -1,10 +1,19 @@
+#define _XOPEN_SOURCE 500 // needed for nanosleep
+#define __USE_POSIX199309 // needed for nanosleep
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
 #include <raylib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <time.h>
 #include "bw_bridge.h"
+
+#define FPS 60
+#define FRAMETIME_US ((int)(1.0/FPS * 1e9)) // 10 ms / 100Hz
+
+void *FrameTimerThread(void *vargp);
 
 int main(int argc, char *argv[])
 {
@@ -17,6 +26,7 @@ int main(int argc, char *argv[])
 	int numFrames;
 	Image img;
 
+	// Handle input arguments
 	static struct option long_opts[]= //parse arguments to read file name with -f
 	{
 		{ "filename", required_argument, 0, 'f' },
@@ -34,6 +44,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//Handle image loading
 	if (IsFileExtension(filename, ".png")) { // see if we are loading an image or an animation
 		img = LoadImage(filename);
 		numFrames = 1;
@@ -56,6 +67,12 @@ int main(int argc, char *argv[])
 
 	printf("Number of Frames: %d\n", numFrames);
 
+	// Set up a timer to have a controllable frame time
+	volatile bool change_frame = 0;
+	pthread_t frame_timer_thread_id;
+	pthread_create(&frame_timer_thread_id, NULL, FrameTimerThread, (bool*)&change_frame);
+    
+	// display our frames
 	uint16_t matrixData[8192];
 	do {
 		
@@ -67,15 +84,28 @@ int main(int argc, char *argv[])
 		currentFrame++;
 		if (currentFrame >= numFrames) currentFrame = 0;
 
-		printf("currentFrame %d\n", currentFrame);
+		// printf("Frame %d\n", currentFrame);
 
-		set_fpga_mem(&br, 0x4000, matrixData, 8192);
+		if (change_frame) printf("Frame not ready!");
+		while (!change_frame){
+		};
 		
-		usleep(16000);
+		set_fpga_mem(&br, 0x4000, matrixData, 8192);
+		change_frame = 0;
+
 	} while (numFrames > 1);
 
 	bridge_close(&br);
 	UnloadImage(img);         // Unload CPU (RAM) image data (pixels)
 
 	return 0;
+}
+
+void *FrameTimerThread(void *vargp) {
+	const struct timespec frametimer = {0 , FRAMETIME_US};
+	while(1) {
+		nanosleep(&frametimer, NULL); //frame time
+		*(bool*)(vargp) = 1; //new character ready
+	}
+	return NULL;
 }
