@@ -169,21 +169,31 @@ Refer to the [BeagleWire Setup Guide](https://beaglewire.github.io/Blogs/Getting
 
 Follow BW setup guide step 1 to get image onto SD card.
 
-Set static IP with connmanctl
+If connecting over ethernet port: Set static IP with connmanctl
 ```
 connmanctl services
-sudo connmanctl config <service> --ipv4 manual <ip_addr> <netmask> <gateway> --nameservers <dns_servers>
+# sudo connmanctl config <service> --ipv4 manual <ip_addr> <netmask> <gateway> --nameservers <dns_servers>
+sudo connmanctl config ethernet_6433db270491_cable --ipv4 manual 192.168.0.128 255.255.255.0 192.168.0.1 --nameservers 8.8.8.8 4.4.4.4
+```
+
+If connecting over USB ethernet: [follow this guide](https://www.digikey.com/en/maker/blogs/how-to-connect-a-beaglebone-black-to-the-internet-using-usb)
+```
+sudo /sbin/route add default gw 192.168.7.1
+sudo -s 
+echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 ```
 
 Change hostname
 ```
 sudo hostname opallios
+sudo sed -i 's/beaglebone/opallios/' /etc/hostname
+sudo sed -i 's/beaglebone/opallios/' /etc/hosts
+sudo reboot
 ```
-Change the old hostname to "opallios" in /etc/hostname and /etc/hosts. Reboot.
 
 Follow step 2 of BW setup guide to update kernel and SW packages
 
-Expand root partition to full SD card
+### Expand root partition to full SD card
 ```
 sudo apt install parted -y
 sudo parted
@@ -195,7 +205,7 @@ sudo resize2fs /dev/mmcblk0p1
 df -h
 ```
 
-Configure git 
+### Configure git 
 ```
 git config --global user.name "Your Name"
 git config --global user.email you@example.com
@@ -208,18 +218,11 @@ Clone Opallios repo
 git clone https://github.com/Matt-D-Smith/Opallios.git
 ```
 
-Install needed libraries and gpu driver ## nah
-```
-#sudo apt install libasound2-dev mesa-common-dev libx11-dev libxrandr-dev libxi-dev xorg-dev libgl1-mesa-dev libglu1-mesa-dev libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
-#possibly needed
-sudo apt install ti-sgx-ti335x-modules-4.9.59-ti-rt-r73
-```
+### Install Raylib
 
-
-Install needed libraries and gpu driver ## good
+Install needed libraries. Note that the GPU driver is incompatible with the libegl1-mesa-dev and libgles2-mesa-dev packages, and I can't figure out how to get raylib to build with the BBB PVR SDK image, so we will not be using raylib for GPU functions, only image loading and software texture functions.
 ```
 sudo apt install libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev
-
 ```
 
 Clone, build, and install raylib
@@ -233,17 +236,16 @@ make PLATFORM=PLATFORM_DRM
 sudo make install
 ```
 
-To set up C debugging
+### Set up C debugging in remote VS code (Optional)
 ```
 sudo apt install gdb
 ```
-
-
 
 create a file in /home/debian named `gdb`. Inside it put:
 ```
 sudo /usr/bin/gdb "$@"
 ```
+
 Direct the debugger miDebuggerPath in launch.json to this file.
 
 Allow gdb to run without a sudo password
@@ -253,21 +255,9 @@ sudo visudo
 sk ALL=NOPASSWD:/usr/bin/gdb
 ```
 
-Raylib requires a display to create an OpenGL context, so... FIGURE THIS PART OUT STILL ITS NOT WORKING
+### Other stuff
 
-Raylib doesnt want to create a window without a window manager. I installed LXQT to set up X11 and associated requirements
-```
-sudo apt install lxqt-core lxqt-core task-lxqt-desktop
-```
-
-Add the following in `/etc/X11/xorg.conf` under the "Screen" section -- ACTUALLY DO THE NEXT THING INSTEAD
-```
-SubSection     "Display"
-    Virtual     1920 1080
-EndSubSection
-```
-
-To do software rendering with X server - does not use gpu
+If OpenGL-compatible software rendering is desired in order to use raylib rendering functions, you can build for desktop, and set up a software renderer with Xvfb.
 ```
 apt-get install xvfb
 Xvfb -shmem -screen 0 1280x1024x24 & export DISPLAY=:0 &
@@ -277,8 +267,6 @@ export DISPLAY=:0
 ---
 Development notes
 ---
-
-figure out how to do block writes on GPMC
 
 
 ## Parts List

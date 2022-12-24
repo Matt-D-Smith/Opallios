@@ -31,3 +31,6 @@ sw/load_fw/Module.symvers
 sw/load_fw/fpga-load.ko
 sw/load_fw/fpga-load.mod.c
 sw/load_fw/modules.order
+
+# ignore vs code settings
+.vscode/
