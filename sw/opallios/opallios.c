@@ -28,6 +28,10 @@ typedef struct shape2d {
 
 void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
 
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 64
+static uint8_t fire[SCREEN_WIDTH * SCREEN_HEIGHT];
+
 
 int main(int argc, char *argv[])
 {
@@ -92,6 +96,7 @@ int main(int argc, char *argv[])
 	pthread_t frame_timer_thread_id;
 	pthread_create(&frame_timer_thread_id, NULL, FrameTimerThread, (bool*)&change_frame);
 
+	// Case 1 shapes
 	// for SW rendering make a frame buffer
 	Image fbuf = GenImageColor(64, 64, BLACK); 
 	// Other SW rendering objects
@@ -104,6 +109,47 @@ int main(int argc, char *argv[])
 		.endPos   = endPts,
 	};
 	int angle = 0;
+
+	// Case 2 fire effect data
+	Color colors[numPixels];
+
+	for (int i = 0; i < 32; ++i) {
+		/* black to mid red, 32 values*/
+		// colors[i].r = i << 2; // make the last red section decay linearly
+		// colors[i].r = (int)(4/32.0*pow(i,2)); //make the last red section decay exponentially
+		colors[i].r = (int)(4/1024.0*pow(i,3)); //make the last red section decay as a 3rd order exponent
+
+		/* mid red to orange, 32 values*/
+		// colors[i + 32].r = 128 + (i << 2);
+
+		colors[i + 32].r = 128 + (i << 2);
+		colors[i + 32].g = (i << 2);
+
+		/*yellow to orange, 32 values*/
+		colors[i + 64].r = 255;
+		colors[i + 64].g = 128 + (i << 2);
+
+		/* yellow to white, 162 */
+		colors[i + 96].r = 255;
+		colors[i + 96].g = 255;
+		colors[i + 96].b = i << 2;
+		colors[i + 128].r = 255;
+		colors[i + 128].g = 255;
+		colors[i + 128].b = 64 + (i << 2);
+		colors[i + 160].r = 255;
+		colors[i + 160].g = 255;
+		colors[i + 160].b = 128 + (i << 2);
+		colors[i + 192].r = 255;
+		colors[i + 192].g = 255;
+		colors[i + 192].b = 192 + i;
+		colors[i + 224].r = 255;
+		colors[i + 224].g = 255;
+		colors[i + 224].b = 224 + i;
+    } 
+
+	int i,j; 
+	uint16_t temp;
+  	uint8_t index;
     
 	// display our frames
 	uint16_t matrixData[8192];
@@ -133,6 +179,61 @@ int main(int argc, char *argv[])
 					(matrixData)[i*2+1] = (((uint8_t *)fbuf.data)[i*4+2]);
 				}
 				break;
+
+			case 2: // fire effect
+				// credit to https://demo-effects.sourceforge.net/ for this algorithm, I just modified the color palette
+
+				/* draw random bottom line in fire array*/
+				j = SCREEN_WIDTH * (SCREEN_HEIGHT- 1);
+				for (i = 0; i < SCREEN_WIDTH - 1; i++)
+				{
+				int random = 1 + (int)(16.0 * (rand()/(RAND_MAX+1.0)));
+				if (random > 9) /* the lower the value, the intenser the fire, compensate a lower value with a higher decay value*/
+					fire[j + i] = 255; /*maximum heat*/
+				else
+					fire[j + i] = 0;
+				}  
+				
+				/* move fire upwards, start at bottom*/
+				
+				for (index = 0; index < 63 ; ++index) {
+					for (i = 0; i < SCREEN_WIDTH - 1; ++i) {
+						if (i == 0) { /* at the left border*/
+							temp = fire[j];
+							temp += fire[j + 1];
+							temp += fire[j - SCREEN_WIDTH];
+							temp /=3;
+						}
+						else if (i == SCREEN_WIDTH - 1) { /* at the right border*/
+							temp = fire[j + i];
+							temp += fire[j - SCREEN_WIDTH + i];
+							temp += fire[j + i - 1];
+							temp /= 3;
+						}
+						else {
+							temp = fire[j + i];
+							temp += fire[j + i + 1];
+							temp += fire[j + i - 1];
+							temp += fire[j - SCREEN_WIDTH + i];
+							temp >>= 2;
+						}
+						if (temp > 1) {
+							temp -= 1; /* decay */
+							if (temp%10 == 0) temp -= 1; // scale it down slightly so it doesn't hit the top edge
+						}
+						else temp = 0;
+
+						fire[j - SCREEN_WIDTH + i] = temp;
+					}
+					j -= SCREEN_WIDTH;
+				}
+
+				for (int i = 0; i < numPixels; i++) {
+					(matrixData)[i*2] = (colors[fire[i]].g) << 8 | (colors[fire[i]].r);
+					(matrixData)[i*2+1] = (colors[fire[i]].b);
+				}
+				break;
+
 		}
 
 		// printf("Frame %d\n", currentFrame);
