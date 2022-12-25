@@ -13,10 +13,21 @@
 
 #define pi 3.14159265
 
-#define FPS 60
+// Frame timer
+#define FPS 100
 #define FRAMETIME_US ((int)(1.0/FPS * 1e9)) // 10 ms / 100Hz
 
 void *FrameTimerThread(void *vargp);
+
+// SW rendering
+typedef struct shape2d {
+	int numLines;
+	Vector2* startPos;
+	Vector2* endPos;
+} shape2d;
+
+void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
+
 
 int main(int argc, char *argv[])
 {
@@ -83,7 +94,16 @@ int main(int argc, char *argv[])
 
 	// for SW rendering make a frame buffer
 	Image fbuf = GenImageColor(64, 64, BLACK); 
-	// Image fbuf = GenImageGradientV(64, 64, RED, BLUE);
+	// Other SW rendering objects
+	//lets represent a wireframe shape as some vectors
+	Vector2 startPts[] = {{-16.0, -8.0}, {16.0,-8.0}, {0.0, 8.0}};
+	Vector2 endPts[]   = {{16.0,-8.0},   {0.0, 8.0},  {-16.0, -8.0}};
+	shape2d triangle = {
+		.numLines = 3,
+		.startPos = startPts,
+		.endPos   = endPts,
+	};
+	int angle = 0;
     
 	// display our frames
 	uint16_t matrixData[8192];
@@ -98,11 +118,14 @@ int main(int argc, char *argv[])
 				currentFrame++;
 				if (currentFrame >= numFrames) currentFrame = 0;
 				break;
-			case 1: // render some software function
-				//do rendering here 
 
-				ImageDrawLine(&fbuf, 31, 31, 31 + 31.0 * cos(45 * pi / 180),  31 + 31.0 * sin(45 * pi / 180), RED);
-				// ImageDrawLine(&fbuf, 31, 31, 31 + 31.0 * cos(45 * pi / 180), sin(45 * pi / 180), BLUE);
+			case 1: // render arbitrary shape
+
+				// make a 2d shape and draw it
+				ImageClearBackground(&fbuf,BLACK);
+				drawShape2d(&fbuf, &triangle, 31, 31, angle, BLUE);
+				angle += 2;
+				if (angle > 360) angle = 0;
 
 				for (int i = 0; i < numPixels; i++)
 				{
@@ -115,14 +138,14 @@ int main(int argc, char *argv[])
 		// printf("Frame %d\n", currentFrame);
 
 		// At this point we should have our data ready in matrixData
-		if (change_frame) printf("Frame not ready!");
+		if (change_frame) printf("Frame not ready!\n");
 		while (!change_frame){
 		};
 		
 		set_fpga_mem(&br, 0x4000, matrixData, 8192);
 		change_frame = 0;
 
-	} while (numFrames > 1);
+	} while (1);
 
 	bridge_close(&br);
 	UnloadImage(img);         // Unload CPU (RAM) image data (pixels)
@@ -137,4 +160,16 @@ void *FrameTimerThread(void *vargp) {
 		*(bool*)(vargp) = 1; //new character ready
 	}
 	return NULL;
+}
+
+void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color) {
+	float costheta = cos(rotationAngle * pi / 180);
+	float sintheta = sin(rotationAngle * pi / 180);
+	for (int i=0; i < shape->numLines; i++) {
+		int xStartRotated = shape->startPos[i].x * costheta - shape->startPos[i].y * sintheta;
+		int yStartRotated = shape->startPos[i].y * costheta + shape->startPos[i].x * sintheta;
+		int xEndRotated   = shape->endPos[i].x   * costheta - shape->endPos[i].y   * sintheta;
+		int yEndRotated   = shape->endPos[i].y   * costheta + shape->endPos[i].x   * sintheta;
+		ImageDrawLine(Image, xoffset + xStartRotated, yoffset + yStartRotated, xoffset + xEndRotated, yoffset + yEndRotated, color);
+	}
 }
