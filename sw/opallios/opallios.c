@@ -11,26 +11,50 @@
 #include <math.h>
 #include "bw_bridge.h"
 
-#define pi 3.14159265
-
 // Frame timer
 #define FPS 100
 #define FRAMETIME_US ((int)(1.0/FPS * 1e9)) // 10 ms / 100Hz
 
 void *FrameTimerThread(void *vargp);
 
-// SW rendering
+// SW rendering shapes
 typedef struct shape2d {
-	int numLines;
-	Vector2* startPos;
-	Vector2* endPos;
+    int numVertices;
+    int numLines;
+    Vector2* vertices;
+    int* lineIndices;
 } shape2d;
 
-void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
+typedef struct shape3d {
+    int numFaces;
+    Vector3* vertices;
+    int* faceVertices;
+    int* numVerticesPerFace;
+} shape3d;
 
+void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
+void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color);
+Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ);
+Vector2 project(Vector3 point, float cameraDistance);
+
+// Fire effect
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 64
 static uint8_t fire[SCREEN_WIDTH * SCREEN_HEIGHT];
+
+// Star field
+#define NUM_STARS 100
+
+typedef struct {
+    float x, y, z;
+    float velocity;
+} Star;
+
+Star stars[NUM_STARS];
+
+void init_starfield();
+void update_starfield();
+void draw_starfield(uint16_t* matrixData);
 
 
 int main(int argc, char *argv[])
@@ -96,21 +120,64 @@ int main(int argc, char *argv[])
 	pthread_t frame_timer_thread_id;
 	pthread_create(&frame_timer_thread_id, NULL, FrameTimerThread, (bool*)&change_frame);
 
-	// Case 1 shapes
+	// 2d shape
 	// for SW rendering make a frame buffer
 	Image fbuf = GenImageColor(64, 64, BLACK); 
 	// Other SW rendering objects
 	//lets represent a wireframe shape as some vectors
-	Vector2 startPts[] = {{-16.0, -8.0}, {16.0,-8.0}, {0.0, 8.0}};
-	Vector2 endPts[]   = {{16.0,-8.0},   {0.0, 8.0},  {-16.0, -8.0}};
+	Vector2 vertices[] = {{-16.0, -8.0}, {16.0, -8.0}, {0.0, 8.0}};
+	int lineIndices[] = {0, 1, 1, 2, 2, 0};
 	shape2d triangle = {
+		.numVertices = 3,
 		.numLines = 3,
-		.startPos = startPts,
-		.endPos   = endPts,
+		.vertices = vertices,
+		.lineIndices = lineIndices
 	};
+
 	int angle = 0;
 
-	// Case 2 fire effect data
+	// 3d shape
+	shape3d triangularPrism = {
+		.numFaces = 5,
+		.vertices = (Vector3[]){{0, 16, 0}, {-16, -16, -16}, {16, -16, -16}, {16, -16, 16}, {-16, -16, 16}},
+		.faceVertices = (int[]){
+			0, 1, 2,   // Face 1
+			0, 2, 3,   // Face 2
+			0, 3, 4,   // Face 3
+			0, 4, 1,   // Face 4
+			1, 2, 3, 4 // Face 5 (square)
+		},
+		.numVerticesPerFace = (int[]){3, 3, 3, 3, 4}
+	};
+
+	shape3d cube = {
+		.numFaces = 6,
+		.vertices = (Vector3[]){
+			{-16,  16,  16}, // 0
+			{ 16,  16,  16}, // 1
+			{ 16, -16,  16}, // 2
+			{-16, -16,  16}, // 3
+			{-16,  16, -16}, // 4
+			{ 16,  16, -16}, // 5
+			{ 16, -16, -16}, // 6
+			{-16, -16, -16}  // 7
+		},
+		.faceVertices = (int[]){
+			0, 1, 2, 3, // Front face
+			4, 5, 6, 7, // Back face
+			0, 1, 5, 4, // Top face
+			2, 3, 7, 6, // Bottom face
+			0, 3, 7, 4, // Left face
+			1, 2, 6, 5  // Right face
+		},
+		.numVerticesPerFace = (int[]){4, 4, 4, 4, 4, 4}
+	};
+
+	int angleX = 0;
+	int angleY = 0;
+	int angleZ = 0;
+
+	// Fire effect data
 	Color colors[numPixels];
 
 	for (int i = 0; i < 32; ++i) {
@@ -147,6 +214,9 @@ int main(int argc, char *argv[])
 		colors[i + 224].b = 224 + i;
     } 
 
+	// Starfield effect
+	init_starfield();	
+
 	int i,j; 
 	uint16_t temp;
   	uint8_t index;
@@ -165,7 +235,7 @@ int main(int argc, char *argv[])
 				if (currentFrame >= numFrames) currentFrame = 0;
 				break;
 
-			case 1: // render arbitrary shape
+			case 1: // 2d shape
 
 				// make a 2d shape and draw it
 				ImageClearBackground(&fbuf,BLACK);
@@ -180,7 +250,49 @@ int main(int argc, char *argv[])
 				}
 				break;
 
-			case 2: // fire effect
+			case 2: // 3d Triangular prism
+				// Draw the 3D shape
+				ImageClearBackground(&fbuf, BLACK);
+				drawShape3d(&fbuf, &triangularPrism, 31, 31, angleX, angleY, angleZ, BLUE);
+
+				// Update the rotation angles
+				angleX += 2;
+				angleY += 2;
+				angleZ += 1;
+
+				if (angleX >= 360) angleX = 0;
+				if (angleY >= 360) angleY = 0;
+				if (angleZ >= 360) angleZ = 0;
+
+				// Copy the pixels to matrixData
+				for (int i = 0; i < numPixels; i++) {
+					(matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
+					(matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
+				}
+				break;
+
+			case 3: // 3d cube
+				// Draw the 3D shape
+				ImageClearBackground(&fbuf, BLACK);
+				drawShape3d(&fbuf, &cube, 31, 31, angleX, angleY, angleZ, BLUE);
+
+				// Update the rotation angles
+				angleX += 2;
+				angleY += 2;
+				angleZ += 1;
+
+				if (angleX >= 360) angleX = 0;
+				if (angleY >= 360) angleY = 0;
+				if (angleZ >= 360) angleZ = 0;
+
+				// Copy the pixels to matrixData
+				for (int i = 0; i < numPixels; i++) {
+					(matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
+					(matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
+				}
+				break;
+
+			case 4: // fire effect
 				// credit to https://demo-effects.sourceforge.net/ for this algorithm, I just modified the color palette
 
 				/* draw random bottom line in fire array*/
@@ -234,6 +346,11 @@ int main(int argc, char *argv[])
 				}
 				break;
 
+			case 5: // Star field
+				update_starfield();
+        		draw_starfield(matrixData);
+				break;
+
 		}
 
 		// printf("Frame %d\n", currentFrame);
@@ -263,14 +380,133 @@ void *FrameTimerThread(void *vargp) {
 	return NULL;
 }
 
-void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color) {
-	float costheta = cos(rotationAngle * pi / 180);
-	float sintheta = sin(rotationAngle * pi / 180);
-	for (int i=0; i < shape->numLines; i++) {
-		int xStartRotated = shape->startPos[i].x * costheta - shape->startPos[i].y * sintheta;
-		int yStartRotated = shape->startPos[i].y * costheta + shape->startPos[i].x * sintheta;
-		int xEndRotated   = shape->endPos[i].x   * costheta - shape->endPos[i].y   * sintheta;
-		int yEndRotated   = shape->endPos[i].y   * costheta + shape->endPos[i].x   * sintheta;
-		ImageDrawLine(Image, xoffset + xStartRotated, yoffset + yStartRotated, xoffset + xEndRotated, yoffset + yEndRotated, color);
-	}
+void drawShape2d(Image* image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color) {
+    float costheta = cos(rotationAngle * M_PI / 180);
+    float sintheta = sin(rotationAngle * M_PI / 180);
+    for (int i = 0; i < shape->numLines; i++) {
+        int startIdx = shape->lineIndices[i * 2];
+        int endIdx = shape->lineIndices[i * 2 + 1];
+
+        Vector2 startPoint = shape->vertices[startIdx];
+        Vector2 endPoint = shape->vertices[endIdx];
+
+        int xStartRotated = startPoint.x * costheta - startPoint.y * sintheta;
+        int yStartRotated = startPoint.y * costheta + startPoint.x * sintheta;
+        int xEndRotated = endPoint.x * costheta - endPoint.y * sintheta;
+        int yEndRotated = endPoint.y * costheta + endPoint.x * sintheta;
+
+        ImageDrawLine(image, xoffset + xStartRotated, yoffset + yStartRotated, xoffset + xEndRotated, yoffset + yEndRotated, color);
+    }
+}
+
+// Function to perform a 3D rotation around the X, Y, and Z axes
+Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ) {
+    // Convert degrees to radians
+    float radX = angleX * (M_PI / 180.0f);
+    float radY = angleY * (M_PI / 180.0f);
+    float radZ = angleZ * (M_PI / 180.0f);
+
+    // Rotate around X-axis
+    float y1 = cos(radX) * point.y - sin(radX) * point.z;
+    float z1 = sin(radX) * point.y + cos(radX) * point.z;
+
+    // Rotate around Y-axis
+    float x2 = cos(radY) * point.x + sin(radY) * z1;
+    float z2 = -sin(radY) * point.x + cos(radY) * z1;
+
+    // Rotate around Z-axis
+    float x3 = cos(radZ) * x2 - sin(radZ) * y1;
+    float y3 = sin(radZ) * x2 + cos(radZ) * y1;
+
+    Vector3 result = {x3, y3, z2};
+    return result;
+}
+
+// Function to perform perspective projection
+Vector2 project(Vector3 point, float cameraDistance) {
+    float x = point.x * (cameraDistance / (cameraDistance - point.z));
+    float y = point.y * (cameraDistance / (cameraDistance - point.z));
+
+    Vector2 result = {x, y};
+    return result;
+}
+
+void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color) {
+    int totalVertices = 0;
+    for (int i = 0; i < shape->numFaces; i++) {
+        totalVertices += shape->numVerticesPerFace[i];
+    }
+
+    Vector2* projectedVertices = (Vector2*) malloc(totalVertices * sizeof(Vector2));
+
+    int baseIndex = 0;
+    for (int i = 0; i < shape->numFaces; i++) {
+        int numVertices = shape->numVerticesPerFace[i];
+
+        for (int j = 0; j < numVertices; j++) {
+            int index = baseIndex + j;
+            Vector3 rotated = rotate3d(shape->vertices[shape->faceVertices[index]], angleX, angleY, angleZ);
+            projectedVertices[index] = project(rotated, 100); // You can adjust the camera distance to your preference
+        }
+
+        int* lineIndices = (int*) malloc(numVertices * 2 * sizeof(int));
+        for (int j = 0; j < numVertices; j++) {
+            lineIndices[j * 2] = j;
+            lineIndices[j * 2 + 1] = (j + 1) % numVertices;
+        }
+
+        shape2d face = {
+            .numVertices = numVertices,
+            .numLines = numVertices,
+            .vertices = &projectedVertices[baseIndex],
+            .lineIndices = lineIndices
+        };
+
+        drawShape2d(image, &face, xoffset, yoffset, 0, color);
+
+        free(lineIndices);
+        baseIndex += numVertices;
+    }
+
+    free(projectedVertices);
+}
+
+// Initialize starfield
+void init_starfield() {
+    for (int i = 0; i < NUM_STARS; i++) {
+        stars[i].x = rand() % 64 - 32;
+        stars[i].y = rand() % 64 - 32;
+        stars[i].z = rand() % 64;
+        stars[i].velocity = 1 + (rand() % 10) / 10.0;
+    }
+}
+
+// Update starfield
+void update_starfield() {
+    for (int i = 0; i < NUM_STARS; i++) {
+        stars[i].z -= stars[i].velocity;
+
+        if (stars[i].z <= 0) {
+            stars[i].x = rand() % 64 - 32;
+            stars[i].y = rand() % 64 - 32;
+            stars[i].z = 64;
+            stars[i].velocity = 1 + (rand() % 10) / 10.0;
+        }
+    }
+}
+
+// Draw starfield
+void draw_starfield(uint16_t* matrixData) {
+    memset(matrixData, 0, 64 * 64 * 2 * sizeof(uint16_t)); // Clear matrixData
+
+    for (int i = 0; i < NUM_STARS; i++) {
+        int x = (int)((stars[i].x / stars[i].z) * 32 + 32);
+        int y = (int)((stars[i].y / stars[i].z) * 32 + 32);
+
+        if (x >= 0 && x < 64 && y >= 0 && y < 64) {
+            int j = y * 64 + x;
+            (matrixData)[j * 2] = (0xFF) << 8 | (0xFF); // G and R components
+            (matrixData)[j * 2 + 1] = (0xFF); // B component
+        }
+    }
 }
