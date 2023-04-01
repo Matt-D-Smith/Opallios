@@ -34,6 +34,7 @@ typedef struct shape3d {
 
 void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
 void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color);
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color);
 Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ);
 Vector2 project(Vector3 point, float cameraDistance);
 
@@ -137,19 +138,21 @@ int main(int argc, char *argv[])
 	int angle = 0;
 
 	// 3d shape
+	// Triangular prism
 	shape3d triangularPrism = {
 		.numFaces = 5,
 		.vertices = (Vector3[]){{0, 16, 0}, {-16, -16, -16}, {16, -16, -16}, {16, -16, 16}, {-16, -16, 16}},
 		.faceVertices = (int[]){
-			0, 1, 2,   // Face 1
-			0, 2, 3,   // Face 2
-			0, 3, 4,   // Face 3
-			0, 4, 1,   // Face 4
-			1, 2, 3, 4 // Face 5 (square)
+			0, 2, 1,   // Face 1
+			0, 3, 2,   // Face 2
+			0, 4, 3,   // Face 3
+			0, 1, 4,   // Face 4
+			4, 1, 2, 3 // Face 5 (square)
 		},
 		.numVerticesPerFace = (int[]){3, 3, 3, 3, 4}
 	};
 
+	// Cube
 	shape3d cube = {
 		.numFaces = 6,
 		.vertices = (Vector3[]){
@@ -163,11 +166,11 @@ int main(int argc, char *argv[])
 			{-16, -16, -16}  // 7
 		},
 		.faceVertices = (int[]){
-			0, 1, 2, 3, // Front face
+			0, 3, 2, 1, // Front face
 			4, 5, 6, 7, // Back face
 			0, 1, 5, 4, // Top face
 			2, 3, 7, 6, // Bottom face
-			0, 3, 7, 4, // Left face
+			0, 4, 7, 3, // Left face
 			1, 2, 6, 5  // Right face
 		},
 		.numVerticesPerFace = (int[]){4, 4, 4, 4, 4, 4}
@@ -253,7 +256,7 @@ int main(int argc, char *argv[])
 			case 2: // 3d Triangular prism
 				// Draw the 3D shape
 				ImageClearBackground(&fbuf, BLACK);
-				drawShape3d(&fbuf, &triangularPrism, 31, 31, angleX, angleY, angleZ, BLUE);
+				drawShape3dCulled(&fbuf, &triangularPrism, 31, 31, angleX, angleY, angleZ, BLUE);
 
 				// Update the rotation angles
 				angleX += 2;
@@ -274,7 +277,7 @@ int main(int argc, char *argv[])
 			case 3: // 3d cube
 				// Draw the 3D shape
 				ImageClearBackground(&fbuf, BLACK);
-				drawShape3d(&fbuf, &cube, 31, 31, angleX, angleY, angleZ, BLUE);
+				drawShape3dCulled(&fbuf, &cube, 31, 31, angleX, angleY, angleZ, BLUE);
 
 				// Update the rotation angles
 				angleX += 2;
@@ -431,6 +434,7 @@ Vector2 project(Vector3 point, float cameraDistance) {
     return result;
 }
 
+// Function tp draw a 3d shape as a wireframe mesh
 void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color) {
     int totalVertices = 0;
     for (int i = 0; i < shape->numFaces; i++) {
@@ -468,6 +472,89 @@ void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, int ang
         baseIndex += numVertices;
     }
 
+    free(projectedVertices);
+}
+
+Vector3 subtract3d(Vector3 a, Vector3 b) {
+    Vector3 result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    result.z = a.z - b.z;
+    return result;
+}
+
+Vector3 cross_product(Vector3 a, Vector3 b) {
+    Vector3 result;
+    result.x = a.y * b.z - a.z * b.y;
+    result.y = a.z * b.x - a.x * b.z;
+    result.z = a.x * b.y - a.y * b.x;
+    return result;
+}
+
+float dot_product(Vector3 a, Vector3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+// Function to perform culling so only faces facing the camera are drawn
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color) {
+    // Calculate the total number of vertices in the shape
+    int totalVertices = 0;
+    for (int i = 0; i < shape->numFaces; i++) {
+        totalVertices += shape->numVerticesPerFace[i];
+    }
+
+    // Allocate memory for the projected 2D vertices
+    Vector2* projectedVertices = (Vector2*) malloc(totalVertices * sizeof(Vector2));
+    
+    // Define the camera position
+    Vector3 cameraPosition = {0, 0, 100};
+
+    int baseIndex = 0;
+    for (int i = 0; i < shape->numFaces; i++) {
+        int numVertices = shape->numVerticesPerFace[i];
+
+        // Allocate memory for rotated vertices
+        Vector3* rotatedVertices = (Vector3*) malloc(numVertices * sizeof(Vector3));
+
+        // Rotate the vertices and project them onto the 2D plane
+        for (int j = 0; j < numVertices; j++) {
+            int index = baseIndex + j;
+            rotatedVertices[j] = rotate3d(shape->vertices[shape->faceVertices[index]], angleX, angleY, angleZ);
+            projectedVertices[index] = project(rotatedVertices[j], 100);
+        }
+
+        // Calculate the normal vector for the face
+        Vector3 normal = cross_product(subtract3d(rotatedVertices[1], rotatedVertices[0]), subtract3d(rotatedVertices[2], rotatedVertices[0]));
+        Vector3 cameraVector = subtract3d(rotatedVertices[0], cameraPosition);
+
+        // Check if the face is visible (if the dot product is positive, the face is not visible)
+        if (dot_product(normal, cameraVector) < 0) {
+            int* lineIndices = (int*) malloc(numVertices * 2 * sizeof(int));
+            for (int j = 0; j < numVertices; j++) {
+                lineIndices[j * 2] = j;
+                lineIndices[j * 2 + 1] = (j + 1) % numVertices;
+            }
+
+            // Create a 2D face with the projected vertices and draw it
+            shape2d face = {
+                .numVertices = numVertices,
+                .numLines = numVertices,
+                .vertices = &projectedVertices[baseIndex],
+                .lineIndices = lineIndices
+            };
+
+            drawShape2d(image, &face, xoffset, yoffset, 0, color);
+
+            // Free the memory allocated for lineIndices
+            free(lineIndices);
+        }
+
+        // Free the memory allocated for rotatedVertices
+        free(rotatedVertices);
+        baseIndex += numVertices;
+    }
+
+    // Free the memory allocated for projectedVertices
     free(projectedVertices);
 }
 
