@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <raylib.h>
+#include <raymath.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -32,9 +33,10 @@ typedef struct shape3d {
     int* numVerticesPerFace;
 } shape3d;
 
-void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color);
-void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color);
-void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color);
+void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, float rotationAngle, Color color);
+void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color);
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color);
+shape3d rlMesh2Shape3d(Mesh mesh);
 Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ);
 Vector2 project(Vector3 point, float cameraDistance);
 
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])
         .lineIndices = lineIndices
     };
 
-    int angle = 0;
+    float angle = 0;
 
     // 3d shape
     // Triangular prism
@@ -152,6 +154,20 @@ int main(int argc, char *argv[])
         .numVerticesPerFace = (int[]){3, 3, 3, 3, 4}
     };
 
+    Mesh sphereMesh = GenMeshSphere(30, 4, 8);
+    shape3d sphere = rlMesh2Shape3d(sphereMesh);
+
+    int heightMapX = 150;
+    int heightMapY = 20;
+    int heightMapZ = 150;
+    Mesh heightMapMesh = GenMeshHeightmap(img, (Vector3) {heightMapX,heightMapY,heightMapZ});
+    shape3d heightMap = rlMesh2Shape3d(heightMapMesh);
+    for (int i = 0; i < heightMapMesh.vertexCount; i++) {
+        heightMap.vertices[i].x = heightMap.vertices[i].x - heightMapX / 2;
+        heightMap.vertices[i].y = heightMap.vertices[i].y - heightMapY / 2;
+        heightMap.vertices[i].z = heightMap.vertices[i].z - heightMapZ / 2;
+    }
+    
     // Cube
     shape3d cube = {
         .numFaces = 6,
@@ -176,9 +192,9 @@ int main(int argc, char *argv[])
         .numVerticesPerFace = (int[]){4, 4, 4, 4, 4, 4}
     };
 
-    int angleX = 0;
-    int angleY = 0;
-    int angleZ = 0;
+    float angleX = 0;
+    float angleY = 0;
+    float angleZ = 0;
 
     // Fire effect data
     Color colors[numPixels];
@@ -244,7 +260,7 @@ int main(int argc, char *argv[])
                 ImageClearBackground(&fbuf,BLACK);
                 drawShape2d(&fbuf, &triangle, 31, 31, angle, BLUE);
                 angle += 2;
-                if (angle > 360) angle = 0;
+                if (angle > 360) angle -= 360;
 
                 for (int i = 0; i < numPixels; i++)
                 {
@@ -253,19 +269,19 @@ int main(int argc, char *argv[])
                 }
                 break;
 
-            case 2: // 3d Triangular prism
+            case 2: // 3d prism
                 // Draw the 3D shape
                 ImageClearBackground(&fbuf, BLACK);
                 drawShape3dCulled(&fbuf, &triangularPrism, 31, 31, angleX, angleY, angleZ, BLUE);
 
                 // Update the rotation angles
-                angleX += 2;
-                angleY += 2;
-                angleZ += 1;
+                angleX += 1.0;
+                angleY += 1.0;
+                angleZ += 0.5;
 
-                if (angleX >= 360) angleX = 0;
-                if (angleY >= 360) angleY = 0;
-                if (angleZ >= 360) angleZ = 0;
+                if (angleX >= 360) angleX -= 360;
+                if (angleY >= 360) angleY -= 360;
+                if (angleZ >= 360) angleZ -= 360;
 
                 // Copy the pixels to matrixData
                 for (int i = 0; i < numPixels; i++) {
@@ -280,13 +296,13 @@ int main(int argc, char *argv[])
                 drawShape3dCulled(&fbuf, &cube, 31, 31, angleX, angleY, angleZ, BLUE);
 
                 // Update the rotation angles
-                angleX += 2;
-                angleY += 2;
-                angleZ += 1;
+                angleX += 1.0;
+                angleY += 1.0;
+                angleZ += 0.5;
 
-                if (angleX >= 360) angleX = 0;
-                if (angleY >= 360) angleY = 0;
-                if (angleZ >= 360) angleZ = 0;
+                if (angleX >= 360) angleX -= 360;
+                if (angleY >= 360) angleY -= 360;
+                if (angleZ >= 360) angleZ -= 360;
 
                 // Copy the pixels to matrixData
                 for (int i = 0; i < numPixels; i++) {
@@ -295,7 +311,50 @@ int main(int argc, char *argv[])
                 }
                 break;
 
-            case 4: // fire effect
+            case 4: // 3d sphere
+                // Draw the 3D shape
+                ImageClearBackground(&fbuf, BLACK);
+                drawShape3dCulled(&fbuf, &sphere, 31, 31, angleX, angleY, angleZ, BLUE);
+
+                // Update the rotation angles
+                angleX += 1.0;
+                angleY += 1.0;
+                angleZ += 0.5;
+
+                if (angleX >= 360) angleX -= 360;
+                if (angleY >= 360) angleY -= 360;
+                if (angleZ >= 360) angleZ -= 360;
+
+                // Copy the pixels to matrixData
+                for (int i = 0; i < numPixels; i++) {
+                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
+                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
+                }
+                break;
+
+            case 5: // 3d heightMap
+                // Draw the 3D shape
+                ImageClearBackground(&fbuf, BLACK);
+                Vector3 rotatedAngle = QuaternionToEuler(QuaternionMultiply(QuaternionFromEuler(-25 * M_PI / 180,0,0),QuaternionFromEuler(angleX * M_PI / 180, angleY * M_PI / 180, angleZ * M_PI / 180)));
+                drawShape3dCulled(&fbuf, &heightMap, 31, 20, rotatedAngle.x * 180 / M_PI, rotatedAngle.y * 180 / M_PI, rotatedAngle.z  * 180 / M_PI, BLUE);
+
+                // Update the rotation angles
+                angleX = 180;
+                angleY += 1.0;
+                angleZ = 0.0;
+
+                if (angleX >= 360) angleX -= 360;
+                if (angleY >= 360) angleY -= 360;
+                if (angleZ >= 360) angleZ -= 360;
+
+                // Copy the pixels to matrixData
+                for (int i = 0; i < numPixels; i++) {
+                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
+                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
+                }
+                break;
+
+            case 6: // fire effect
                 // credit to https://demo-effects.sourceforge.net/ for this algorithm, I just modified the color palette
 
                 /* draw random bottom line in fire array*/
@@ -349,7 +408,7 @@ int main(int argc, char *argv[])
                 }
                 break;
 
-            case 5: // Star field
+            case 7: // Star field
                 update_starfield();
                 draw_starfield(matrixData);
                 break;
@@ -383,7 +442,7 @@ void *FrameTimerThread(void *vargp) {
     return NULL;
 }
 
-void drawShape2d(Image* image, shape2d* shape, int xoffset, int yoffset, int rotationAngle, Color color) {
+void drawShape2d(Image* image, shape2d* shape, int xoffset, int yoffset, float rotationAngle, Color color) {
     float costheta = cos(rotationAngle * M_PI / 180);
     float sintheta = sin(rotationAngle * M_PI / 180);
     for (int i = 0; i < shape->numLines; i++) {
@@ -434,8 +493,8 @@ Vector2 project(Vector3 point, float cameraDistance) {
     return result;
 }
 
-// Function tp draw a 3d shape as a wireframe mesh
-void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color) {
+// Function to draw a 3d shape as a wireframe mesh
+void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color) {
     int totalVertices = 0;
     for (int i = 0; i < shape->numFaces; i++) {
         totalVertices += shape->numVerticesPerFace[i];
@@ -450,7 +509,7 @@ void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, int ang
         for (int j = 0; j < numVertices; j++) {
             int index = baseIndex + j;
             Vector3 rotated = rotate3d(shape->vertices[shape->faceVertices[index]], angleX, angleY, angleZ);
-            projectedVertices[index] = project(rotated, 100); // You can adjust the camera distance to your preference
+            projectedVertices[index] = project(rotated, 200); // You can adjust the camera distance to your preference
         }
 
         int* lineIndices = (int*) malloc(numVertices * 2 * sizeof(int));
@@ -496,7 +555,7 @@ float dot_product(Vector3 a, Vector3 b) {
 }
 
 // Function to perform culling so only faces facing the camera are drawn
-void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, int angleX, int angleY, int angleZ, Color color) {
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color) {
     // Calculate the total number of vertices in the shape
     int totalVertices = 0;
     for (int i = 0; i < shape->numFaces; i++) {
@@ -556,6 +615,45 @@ void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, i
 
     // Free the memory allocated for projectedVertices
     free(projectedVertices);
+}
+
+shape3d rlMesh2Shape3d(Mesh mesh) {
+    int numFaces = mesh.triangleCount;
+    int totalVertices = mesh.vertexCount;
+
+    Vector3* vertices = (Vector3*) malloc(totalVertices * sizeof(Vector3));
+    for (int i = 0; i < totalVertices; i++) {
+        vertices[i] = (Vector3){mesh.vertices[i * 3], mesh.vertices[i * 3 + 1], mesh.vertices[i * 3 + 2]};
+    }
+
+    int* faceVertices = NULL;
+    int* numVerticesPerFace = NULL;
+
+    if (mesh.indices != NULL) {
+        faceVertices = (int*) malloc(totalVertices * sizeof(int));
+        for (int i = 0; i < totalVertices; i++) {
+            faceVertices[i] = (int)mesh.indices[i];
+        }
+    } else {
+        faceVertices = (int*) malloc(totalVertices * sizeof(int));
+        for (int i = 0; i < totalVertices; i++) {
+            faceVertices[i] = i;
+        }
+    }
+
+    numVerticesPerFace = (int*) malloc(numFaces * sizeof(int));
+    for (int i = 0; i < numFaces; i++) {
+        numVerticesPerFace[i] = 3; // Assuming the mesh consists of triangles
+    }
+
+    shape3d result = {
+        .numFaces = numFaces,
+        .vertices = vertices,
+        .faceVertices = faceVertices,
+        .numVerticesPerFace = numVerticesPerFace
+    };
+
+    return result;
 }
 
 // Initialize starfield
