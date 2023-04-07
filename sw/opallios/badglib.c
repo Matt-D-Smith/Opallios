@@ -1,11 +1,12 @@
 #include <raylib.h>
+#include <raymath.h>
 #include "badglib.h"
 #include <math.h>
 #include <stdlib.h>
 
 void drawShape2d(Image* image, shape2d* shape, int xoffset, int yoffset, float rotationAngle, Color color) {
-    float costheta = cos(rotationAngle * M_PI / 180);
-    float sintheta = sin(rotationAngle * M_PI / 180);
+    float costheta = cosf(rotationAngle * M_PI / 180);
+    float sintheta = sinf(rotationAngle * M_PI / 180);
     for (int i = 0; i < shape->numLines; i++) {
         int startIdx = shape->lineIndices[i * 2];
         int endIdx = shape->lineIndices[i * 2 + 1];
@@ -23,23 +24,21 @@ void drawShape2d(Image* image, shape2d* shape, int xoffset, int yoffset, float r
 }
 
 // Function to perform a 3D rotation around the X, Y, and Z axes
-Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ) {
+Vector3 rotate3d(Vector3 point, Vector3 rotationAngles) {
     // Convert degrees to radians
-    float radX = angleX * (M_PI / 180.0f);
-    float radY = angleY * (M_PI / 180.0f);
-    float radZ = angleZ * (M_PI / 180.0f);
+    Vector3 radAngles = Vector3Scale(rotationAngles, (M_PI / 180.0f));
 
     // Rotate around X-axis
-    float y1 = cos(radX) * point.y - sin(radX) * point.z;
-    float z1 = sin(radX) * point.y + cos(radX) * point.z;
+    float y1 = cosf(radAngles.x) * point.y - sinf(radAngles.x) * point.z;
+    float z1 = sinf(radAngles.x) * point.y + cosf(radAngles.x) * point.z;
 
     // Rotate around Y-axis
-    float x2 = cos(radY) * point.x + sin(radY) * z1;
-    float z2 = -sin(radY) * point.x + cos(radY) * z1;
+    float x2 = cosf(radAngles.y) * point.x + sinf(radAngles.y) * z1;
+    float z2 = -sinf(radAngles.y) * point.x + cosf(radAngles.y) * z1;
 
     // Rotate around Z-axis
-    float x3 = cos(radZ) * x2 - sin(radZ) * y1;
-    float y3 = sin(radZ) * x2 + cos(radZ) * y1;
+    float x3 = cosf(radAngles.z) * x2 - sinf(radAngles.z) * y1;
+    float y3 = sinf(radAngles.z) * x2 + cosf(radAngles.z) * y1;
 
     Vector3 result = {x3, y3, z2};
     return result;
@@ -55,7 +54,7 @@ Vector2 project(Vector3 point, float cameraDistance) {
 }
 
 // Function to draw a 3d shape as a wireframe mesh
-void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color) {
+void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, Vector3 rotationAngles, Color color) {
     int totalVertices = 0;
     for (int i = 0; i < shape->numFaces; i++) {
         totalVertices += shape->numVerticesPerFace[i];
@@ -69,7 +68,7 @@ void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, float a
 
         for (int j = 0; j < numVertices; j++) {
             int index = baseIndex + j;
-            Vector3 rotated = rotate3d(shape->vertices[shape->faceVertices[index]], angleX, angleY, angleZ);
+            Vector3 rotated = rotate3d(shape->vertices[shape->faceVertices[index]], rotationAngles);
             projectedVertices[index] = project(rotated, 200); // You can adjust the camera distance to your preference
         }
 
@@ -95,28 +94,8 @@ void drawShape3d(Image* image, shape3d* shape, int xoffset, int yoffset, float a
     free(projectedVertices);
 }
 
-Vector3 subtract3d(Vector3 a, Vector3 b) {
-    Vector3 result;
-    result.x = a.x - b.x;
-    result.y = a.y - b.y;
-    result.z = a.z - b.z;
-    return result;
-}
-
-Vector3 cross_product(Vector3 a, Vector3 b) {
-    Vector3 result;
-    result.x = a.y * b.z - a.z * b.y;
-    result.y = a.z * b.x - a.x * b.z;
-    result.z = a.x * b.y - a.y * b.x;
-    return result;
-}
-
-float dot_product(Vector3 a, Vector3 b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
 // Function to perform culling so only faces facing the camera are drawn
-void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color) {
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, Vector3 rotationAngles, Color color) {
     // Calculate the total number of vertices in the shape
     int totalVertices = 0;
     for (int i = 0; i < shape->numFaces; i++) {
@@ -139,16 +118,16 @@ void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, f
         // Rotate the vertices and project them onto the 2D plane
         for (int j = 0; j < numVertices; j++) {
             int index = baseIndex + j;
-            rotatedVertices[j] = rotate3d(shape->vertices[shape->faceVertices[index]], angleX, angleY, angleZ);
+            rotatedVertices[j] = rotate3d(shape->vertices[shape->faceVertices[index]], rotationAngles);
             projectedVertices[index] = project(rotatedVertices[j], 100);
         }
 
         // Calculate the normal vector for the face
-        Vector3 normal = cross_product(subtract3d(rotatedVertices[1], rotatedVertices[0]), subtract3d(rotatedVertices[2], rotatedVertices[0]));
-        Vector3 cameraVector = subtract3d(rotatedVertices[0], cameraPosition);
+        Vector3 normal = Vector3CrossProduct(Vector3Subtract(rotatedVertices[1], rotatedVertices[0]), Vector3Subtract(rotatedVertices[2], rotatedVertices[0]));
+        Vector3 cameraVector = Vector3Subtract(rotatedVertices[0], cameraPosition);
 
         // Check if the face is visible (if the dot product is positive, the face is not visible)
-        if (dot_product(normal, cameraVector) < 0) {
+        if (Vector3DotProduct(normal, cameraVector) < 0) {
             int* lineIndices = (int*) malloc(numVertices * 2 * sizeof(int));
             for (int j = 0; j < numVertices; j++) {
                 lineIndices[j * 2] = j;

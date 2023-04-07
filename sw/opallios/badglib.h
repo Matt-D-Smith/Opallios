@@ -18,11 +18,8 @@ typedef struct shape3d {
 } shape3d;
 
 void drawShape2d (Image* Image, shape2d* shape, int xoffset, int yoffset, float rotationAngle, Color color);
-void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color);
-void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, float angleX, float angleY, float angleZ, Color color);
-Vector3 subtract3d(Vector3 a, Vector3 b);
-Vector3 cross_product(Vector3 a, Vector3 b);
-float dot_product(Vector3 a, Vector3 b);
+void drawShape3d (Image* image, shape3d* shape, int xoffset, int yoffset, Vector3 rotationAngles, Color color);
+void drawShape3dCulled(Image* image, shape3d* shape, int xoffset, int yoffset, Vector3 rotationAngles, Color color);
 shape3d rlMesh2Shape3d(Mesh mesh);
-Vector3 rotate3d(Vector3 point, float angleX, float angleY, float angleZ);
+Vector3 rotate3d(Vector3 point, Vector3 rotationAngles);
 Vector2 project(Vector3 point, float cameraDistance);

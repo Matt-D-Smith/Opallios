@@ -14,16 +14,22 @@
 #include "badglib.h"
 #include "fast_obj.h"
 
+// Screen size
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 64
+#define NUMPIXELS SCREEN_WIDTH * SCREEN_HEIGHT
+
 // Frame timer
 #define FPS 100
 #define FRAMETIME_US ((int)(1.0/FPS * 1e9)) // 10 ms / 100Hz
 
 void *FrameTimerThread(void *vargp);
 
+//Format data for gpmc
+void loadMatrixData(uint16_t* matrixData, Image* fbuf, int FrameNum);
+
 // Fire effect
-#define SCREEN_WIDTH 64
-#define SCREEN_HEIGHT 64
-static uint8_t fire[SCREEN_WIDTH * SCREEN_HEIGHT];
+static uint8_t fire[NUMPIXELS];
 
 // Star field
 #define NUM_STARS 100
@@ -94,7 +100,6 @@ int main(int argc, char *argv[])
     }
 
     int currentFrame = 0;
-    int numPixels = 4096;
 
     printf("Number of Frames: %d\n", numFrames);
 
@@ -172,14 +177,11 @@ int main(int argc, char *argv[])
         .numVerticesPerFace = (int[]){4, 4, 4, 4, 4, 4}
     };
 
-    float angleX = 0;
-    float angleY = 0;
-    float angleZ = 0;
-
+    Vector3 rotationAngles = {0.0,0.0,0.0};
     Vector3 rotatedAngle;
 
     // Fire effect data
-    Color colors[numPixels];
+    Color colors[NUMPIXELS];
 
     for (int i = 0; i < 32; ++i) {
         /* black to mid red, 32 values*/
@@ -239,15 +241,11 @@ int main(int argc, char *argv[])
     }
     
     // display our frames
-    uint16_t matrixData[8192];
+    uint16_t matrixData[NUMPIXELS * 2];
     do {
         switch (mode) {
             case 0: // display image/gif
-                for (int i = 0; i < numPixels; i++)
-                {
-                    (matrixData)[i*2] = (((uint8_t *)img.data)[i*4+1+currentFrame*numPixels*4]) << 8 | (((uint8_t *)img.data)[i*4+currentFrame*numPixels*4]);
-                    (matrixData)[i*2+1] = (((uint8_t *)img.data)[i*4+2+currentFrame*numPixels*4]);
-                }
+                loadMatrixData(matrixData, &img, currentFrame);
                 currentFrame++;
                 if (currentFrame >= numFrames) currentFrame = 0;
                 break;
@@ -260,96 +258,80 @@ int main(int argc, char *argv[])
                 angle += 2;
                 if (angle > 360) angle -= 360;
 
-                for (int i = 0; i < numPixels; i++)
-                {
-                    (matrixData)[i*2] = (((uint8_t *)fbuf.data)[i*4+1]) << 8 | (((uint8_t *)fbuf.data)[i*4]);
-                    (matrixData)[i*2+1] = (((uint8_t *)fbuf.data)[i*4+2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 2: // 3d prism
                 // Draw the 3D shape
                 ImageClearBackground(&fbuf, BLACK);
-                drawShape3dCulled(&fbuf, &triangularPrism, 31, 31, angleX, angleY, angleZ, BLUE);
+                drawShape3dCulled(&fbuf, &triangularPrism, 31, 31, rotationAngles, BLUE);
 
                 // Update the rotation angles
-                angleX += 1.0;
-                angleY += 1.0;
-                angleZ += 0.5;
+                rotationAngles.x += 1.0;
+                rotationAngles.y += 1.0;
+                rotationAngles.z += 0.5;
 
-                if (angleX >= 360) angleX -= 360;
-                if (angleY >= 360) angleY -= 360;
-                if (angleZ >= 360) angleZ -= 360;
+                if (rotationAngles.x >= 360) rotationAngles.x -= 360;
+                if (rotationAngles.y >= 360) rotationAngles.y -= 360;
+                if (rotationAngles.z >= 360) rotationAngles.z -= 360;
 
                 // Copy the pixels to matrixData
-                for (int i = 0; i < numPixels; i++) {
-                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
-                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 3: // 3d cube
                 // Draw the 3D shape
                 ImageClearBackground(&fbuf, BLACK);
-                drawShape3dCulled(&fbuf, &cube, 31, 31, angleX, angleY, angleZ, BLUE);
+                drawShape3dCulled(&fbuf, &cube, 31, 31, rotationAngles, BLUE);
 
                 // Update the rotation angles
-                angleX += 1.0;
-                angleY += 1.0;
-                angleZ += 0.5;
+                rotationAngles.x += 1.0;
+                rotationAngles.y += 1.0;
+                rotationAngles.z += 0.5;
 
-                if (angleX >= 360) angleX -= 360;
-                if (angleY >= 360) angleY -= 360;
-                if (angleZ >= 360) angleZ -= 360;
+                if (rotationAngles.x >= 360) rotationAngles.x -= 360;
+                if (rotationAngles.y >= 360) rotationAngles.y -= 360;
+                if (rotationAngles.z >= 360) rotationAngles.z -= 360;
 
                 // Copy the pixels to matrixData
-                for (int i = 0; i < numPixels; i++) {
-                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
-                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 4: // 3d sphere
                 // Draw the 3D shape
                 ImageClearBackground(&fbuf, BLACK);
-                drawShape3dCulled(&fbuf, &sphere, 31, 31, angleX, angleY, angleZ, BLUE);
+                drawShape3dCulled(&fbuf, &sphere, 31, 31, rotationAngles, BLUE);
 
                 // Update the rotation angles
-                angleX += 1.0;
-                angleY += 1.0;
-                angleZ += 0.5;
+                rotationAngles.x += 1.0;
+                rotationAngles.y += 1.0;
+                rotationAngles.z += 0.5;
 
-                if (angleX >= 360) angleX -= 360;
-                if (angleY >= 360) angleY -= 360;
-                if (angleZ >= 360) angleZ -= 360;
+                if (rotationAngles.x >= 360) rotationAngles.x -= 360;
+                if (rotationAngles.y >= 360) rotationAngles.y -= 360;
+                if (rotationAngles.z >= 360) rotationAngles.z -= 360;
 
                 // Copy the pixels to matrixData
-                for (int i = 0; i < numPixels; i++) {
-                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
-                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 5: // 3d heightMap
                 // Draw the 3D shape
                 ImageClearBackground(&fbuf, BLACK);
-                rotatedAngle = QuaternionToEuler(QuaternionMultiply(QuaternionFromEuler(-25 * M_PI / 180,0,0),QuaternionFromEuler(angleX * M_PI / 180, angleY * M_PI / 180, angleZ * M_PI / 180)));
-                drawShape3dCulled(&fbuf, &heightMap, 31, 20, rotatedAngle.x * 180 / M_PI, rotatedAngle.y * 180 / M_PI, rotatedAngle.z  * 180 / M_PI, BLUE);
+                rotatedAngle = QuaternionToEuler(QuaternionMultiply(QuaternionFromEuler(-25 * M_PI / 180,0,0),QuaternionFromEuler(rotationAngles.x * M_PI / 180, rotationAngles.y * M_PI / 180, rotationAngles.z * M_PI / 180)));
+                drawShape3dCulled(&fbuf, &heightMap, 31, 20, Vector3Scale(rotatedAngle, 180 / M_PI), BLUE);
 
                 // Update the rotation angles
-                angleX = 180;
-                angleY += 1.0;
-                angleZ = 0.0;
+                rotationAngles.x = 180;
+                rotationAngles.y += 1.0;
+                rotationAngles.z = 0.0;
 
-                if (angleX >= 360) angleX -= 360;
-                if (angleY >= 360) angleY -= 360;
-                if (angleZ >= 360) angleZ -= 360;
+                if (rotationAngles.x >= 360) rotationAngles.x -= 360;
+                if (rotationAngles.y >= 360) rotationAngles.y -= 360;
+                if (rotationAngles.z >= 360) rotationAngles.z -= 360;
 
                 // Copy the pixels to matrixData
-                for (int i = 0; i < numPixels; i++) {
-                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
-                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 6: // fire effect
@@ -400,7 +382,8 @@ int main(int argc, char *argv[])
                     j -= SCREEN_WIDTH;
                 }
 
-                for (int i = 0; i < numPixels; i++) {
+                // not using an Image for drawing, load matrixData
+                for (int i = 0; i < NUMPIXELS; i++) {
                     (matrixData)[i*2] = (colors[fire[i]].g) << 8 | (colors[fire[i]].r);
                     (matrixData)[i*2+1] = (colors[fire[i]].b);
                 }
@@ -409,23 +392,20 @@ int main(int argc, char *argv[])
             case 7: // obj
                 // Draw the obj
                 ImageClearBackground(&fbuf, BLACK);
-                rotatedAngle = QuaternionToEuler(QuaternionMultiply(QuaternionFromEuler(-25 * M_PI / 180,0,0),QuaternionFromEuler(angleX * M_PI / 180, angleY * M_PI / 180, angleZ * M_PI / 180)));
-                drawShape3dCulled(&fbuf, &obj, 31, 50, rotatedAngle.x * 180 / M_PI, rotatedAngle.y * 180 / M_PI, rotatedAngle.z  * 180 / M_PI, ORANGE);
+                rotatedAngle = QuaternionToEuler(QuaternionMultiply(QuaternionFromEuler(-25 * M_PI / 180,0,0),QuaternionFromEuler(rotationAngles.x * M_PI / 180, rotationAngles.y * M_PI / 180, rotationAngles.z * M_PI / 180)));
+                drawShape3dCulled(&fbuf, &obj, 31, 50, Vector3Scale(rotatedAngle, 180 / M_PI), ORANGE);
 
                 // Update the rotation angles
-                angleX = 180;
-                angleY += 1.0;
-                angleZ = 0.0;
+                rotationAngles.x = 180;
+                rotationAngles.y += 1.0;
+                rotationAngles.z = 0.0;
 
-                if (angleX >= 360) angleX -= 360;
-                if (angleY >= 360) angleY -= 360;
-                if (angleZ >= 360) angleZ -= 360;
+                if (rotationAngles.x >= 360) rotationAngles.x -= 360;
+                if (rotationAngles.y >= 360) rotationAngles.y -= 360;
+                if (rotationAngles.z >= 360) rotationAngles.z -= 360;
 
                 // Copy the pixels to matrixData
-                for (int i = 0; i < numPixels; i++) {
-                    (matrixData)[i * 2] = (((uint8_t *)fbuf.data)[i * 4 + 1]) << 8 | (((uint8_t *)fbuf.data)[i * 4]);
-                    (matrixData)[i * 2 + 1] = (((uint8_t *)fbuf.data)[i * 4 + 2]);
-                }
+                loadMatrixData(matrixData, &fbuf, 0);
                 break;
 
             case 8: // Star field
@@ -499,5 +479,13 @@ void draw_starfield(uint16_t* matrixData) {
             (matrixData)[j * 2] = (0xFF) << 8 | (0xFF); // G and R components
             (matrixData)[j * 2 + 1] = (0xFF); // B component
         }
+    }
+}
+
+void loadMatrixData(uint16_t* matrixData, Image* fbuf, int FrameNum) {
+    for (int i = 0; i < NUMPIXELS; i++)
+    {
+        (matrixData)[i*2] = (((uint8_t *)fbuf->data)[i*4+1+FrameNum*NUMPIXELS*4]) << 8 | (((uint8_t *)fbuf->data)[i*4+FrameNum*NUMPIXELS*4]);
+        (matrixData)[i*2+1] = (((uint8_t *)fbuf->data)[i*4+2+FrameNum*NUMPIXELS*4]);
     }
 }
