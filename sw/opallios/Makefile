@@ -20,7 +20,7 @@ all: $(bins-y)
 $(bins-y):
 	$(CC) -o $@ $^ -lGLESv2 -lEGL -ldrm -lgbm -lpthread -lrt -lm -ldl
 
-opallios: opallios.o ../bridge_lib/bw_bridge.o libraylib.a
+opallios: opallios.o badglib.c ../bridge_lib/bw_bridge.o libraylib.a
 
 clean:
 	$(RM) *.o *~ $(bins-y)
