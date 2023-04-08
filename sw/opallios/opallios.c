@@ -18,6 +18,7 @@
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 64
 #define NUMPIXELS SCREEN_WIDTH * SCREEN_HEIGHT
+#define FPGA_MEM_OFFSET 0x4000
 
 // Frame timer
 #define FPS 100
@@ -58,16 +59,18 @@ int main(int argc, char *argv[])
     Image img;
 
     int mode = 0; // choose what function is being displayed
+    bool printFrameTimes = false;
 
     // Handle input arguments
     static struct option long_opts[]= //parse arguments to read file name with -f
     {
-        { "filename", required_argument, 0, 'f' }, // Filename
-        { "mode"    , optional_argument, 0, 'm' }, // mode 0 = gif/image, 1 = software rendering
+        { "filename"    , required_argument, 0, 'f' }, // Filename
+        { "mode"        , optional_argument, 0, 'm' }, // mode 0 = gif/image, 1 = software rendering
+        { "frametimes"  , no_argument      , 0, 't' },
         { 0, 0, 0, 0 },
     };
 
-    while((opt = getopt_long(argc, argv, "m:f:", long_opts, &opt_i)) != -1)
+    while((opt = getopt_long(argc, argv, "m:f:t", long_opts, &opt_i)) != -1)
     {
         switch(opt)
         {
@@ -77,6 +80,9 @@ int main(int argc, char *argv[])
             break;
         case 'm':
             mode = atoi(optarg);
+            break;
+        case 't':
+            printFrameTimes = true;
             break;
         }
     }
@@ -107,6 +113,9 @@ int main(int argc, char *argv[])
     volatile bool change_frame = 0;
     pthread_t frame_timer_thread_id;
     pthread_create(&frame_timer_thread_id, NULL, FrameTimerThread, (bool*)&change_frame);
+    
+    struct timespec ts;
+    uint64_t us = 0;
 
     // 2d shape
     // for SW rendering make a frame buffer
@@ -243,6 +252,11 @@ int main(int argc, char *argv[])
     // display our frames
     uint16_t matrixData[NUMPIXELS * 2];
     do {
+        if (printFrameTimes) {
+            clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+            us = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
+        }
+
         switch (mode) {
             case 0: // display image/gif
                 loadMatrixData(matrixData, &img, currentFrame);
@@ -415,14 +429,17 @@ int main(int argc, char *argv[])
 
         }
 
-        // printf("Frame %d\n", currentFrame);
+        if (printFrameTimes) {
+            clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+            printf("%llu us\n",(uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000 - us);
+        }
 
         // At this point we should have our data ready in matrixData
         if (change_frame) printf("Frame not ready!\n");
         while (!change_frame){
         };
         
-        set_fpga_mem(&br, 0x4000, matrixData, 8192);
+        set_fpga_mem(&br, FPGA_MEM_OFFSET, matrixData, NUMPIXELS*2);
         change_frame = 0;
 
     } while (1);
